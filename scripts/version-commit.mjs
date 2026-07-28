@@ -5,30 +5,24 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const commitMessagePath = process.argv[2];
-if (!commitMessagePath) process.exit(0);
-
 const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
 process.chdir(root);
 
 const generatedFiles = new Set(["package.json", "package-lock.json", "lib/changelog.json"]);
-const stagedFiles = execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACDMRTUXB"], { encoding: "utf8" })
+const changedFiles = execFileSync("git", ["diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "HEAD"], { encoding: "utf8" })
   .split(/\r?\n/)
   .map((file) => file.trim())
   .filter(Boolean)
   .filter((file) => !generatedFiles.has(file));
-const commitMessage = fs.readFileSync(commitMessagePath, "utf8")
-  .split(/\r?\n/)
-  .map((line) => line.trim())
-  .find((line) => line && !line.startsWith("#"));
+const commitMessage = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
 
 if (!commitMessage) process.exit(0);
 
-const stagedDiff = stagedFiles.length > 0
-  ? execFileSync("git", ["diff", "--cached", "--binary", "--", ...stagedFiles], { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 })
+const committedDiff = changedFiles.length > 0
+  ? execFileSync("git", ["show", "--format=", "--binary", "HEAD", "--", ...changedFiles], { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 })
   : "";
 const fingerprint = createHash("sha256")
-  .update(`${commitMessage}\0${stagedFiles.join("\0")}\0${stagedDiff}`)
+  .update(`${commitMessage}\0${changedFiles.join("\0")}\0${committedDiff}`)
   .digest("hex")
   .slice(0, 16);
 
@@ -66,8 +60,8 @@ changelog.unshift({
   version: nextVersion,
   date: new Date().toISOString().slice(0, 10),
   title: commitMessage,
-  fileCount: stagedFiles.length,
-  files: stagedFiles,
+  fileCount: changedFiles.length,
+  files: changedFiles,
   fingerprint,
 });
 
@@ -75,4 +69,8 @@ fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
 fs.writeFileSync(lockPath, `${JSON.stringify(packageLock, null, 2)}\n`);
 fs.writeFileSync(changelogPath, `${JSON.stringify(changelog, null, 2)}\n`);
 execFileSync("git", ["add", "--", "package.json", "package-lock.json", "lib/changelog.json"], { stdio: "inherit" });
-console.log(`Version automatisch auf ${nextVersion} erhöht und Changelog aktualisiert.`);
+execFileSync("git", ["commit", "--amend", "--no-edit", "--no-verify"], {
+  stdio: "inherit",
+  env: { ...process.env, VERSION_HOOK_RUNNING: "1" },
+});
+console.log(`Version automatisch auf ${nextVersion} erhöht und in den Commit aufgenommen.`);

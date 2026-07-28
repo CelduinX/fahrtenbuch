@@ -58,7 +58,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Die Daten bleiben dabei im Docker-Volume erhalten. Vor einem Update empfiehlt sich trotzdem eine manuelle Sicherung unter **Einstellungen → Sicherungen**.
+Die Daten bleiben dabei im lokalen Ordner `./data` erhalten. Vor einem Update empfiehlt sich trotzdem eine manuelle Sicherung unter **Einstellungen → Sicherungen**.
 
 ## Betrieb und Fehlerdiagnose
 
@@ -82,7 +82,7 @@ docker compose restart fahrtenbuch
 
 ## Daten und Sicherungen
 
-Die Datenbank und alle Sicherungen liegen dauerhaft im Named Volume `fahrtenbuch-data`. Ein normaler Container-Neustart oder ein Image-Update löscht diese Daten nicht.
+Die Datenbank und alle Sicherungen liegen dauerhaft im Ordner `./data` neben der Compose-Datei. Ein normaler Container-Neustart oder ein Image-Update löscht diese Daten nicht. Der Ordner wird beim ersten Start automatisch angelegt.
 
 - Automatische und manuelle Sicherungen werden unter **Einstellungen → Sicherungen** verwaltet.
 - Vor einer Wiederherstellung legt die Anwendung eine zusätzliche Sicherheitskopie an.
@@ -104,13 +104,24 @@ Container beenden, Daten behalten:
 docker compose down
 ```
 
-Container und alle gespeicherten Daten endgültig löschen:
+Die gespeicherten Daten werden dabei nicht entfernt. Für eine vollständige Deinstallation muss der Ordner `./data` nach einer geprüften Sicherung bewusst separat gelöscht werden.
+
+## Von einer älteren Docker-Version aktualisieren
+
+Wenn die bisherige Installation bereits `./data:/app/data` verwendet, kann derselbe Datenordner weiterverwendet werden:
+
+1. Unter **Einstellungen → Sicherungen** eine manuelle Sicherung erstellen.
+2. Den bisherigen Container mit `docker compose down` vollständig beenden.
+3. Den Ordner `./data` zusätzlich außerhalb des Anwendungsverzeichnisses sichern.
+4. Die neue `docker-compose.yaml` in dasselbe Verzeichnis legen.
+5. Die neue Version starten:
 
 ```bash
-docker compose down -v
+docker compose pull
+docker compose up -d
 ```
 
-Der zweite Befehl löscht das Fahrtenbuch-Volume unwiderruflich. Er sollte nur nach einer geprüften Sicherung verwendet werden.
+Die Datenbank wird beim ersten Start automatisch auf das aktuelle Schema gebracht. Zugangsdaten, Fahrten, Reisewege und Sicherungen bleiben erhalten.
 
 ## Zugriff über das Internet
 

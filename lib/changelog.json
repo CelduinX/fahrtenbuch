@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.1",
+    "date": "2026-07-28",
+    "title": "Datenverzeichnis als Bind-Mount verwenden",
+    "fileCount": 5,
+    "files": [
+      ".gitattributes",
+      "Dockerfile",
+      "README.md",
+      "docker-compose.yaml",
+      "docker-entrypoint.sh"
+    ],
+    "fingerprint": "90b27e472f22ddf0"
+  },
+  {
     "version": "1.0.0",
     "date": "2026-07-28",
     "title": "Öffentliche Version 1.0.0",
