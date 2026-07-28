@@ -1,0 +1,15 @@
+services:
+  fahrtenbuch:
+    image: ghcr.io/celduinx/fahrtenbuch:latest
+    restart: unless-stopped
+    init: true
+    ports:
+      - "3000:3000"
+    volumes:
+      - fahrtenbuch-data:/app/data
+    environment:
+      TZ: Europe/Berlin
+    stop_grace_period: 20s
+
+volumes:
+  fahrtenbuch-data:
