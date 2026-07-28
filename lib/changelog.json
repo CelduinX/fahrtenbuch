@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.2",
+    "date": "2026-07-28",
+    "title": "Browsertest an Versionsnummer koppeln",
+    "fileCount": 1,
+    "files": [
+      "tests/e2e/fahrtenbuch.spec.ts"
+    ],
+    "fingerprint": "aa35360e08d37681"
+  },
+  {
     "version": "1.0.1",
     "date": "2026-07-28",
     "title": "Datenverzeichnis als Bind-Mount verwenden",

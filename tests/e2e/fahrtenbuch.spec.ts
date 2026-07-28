@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { generate } from "otplib";
+import packageJson from "../../package.json";
+
+const changelogButtonName = `Version ${packageJson.version} – Changelog öffnen`;
 
 test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ page }) => {
   test.setTimeout(90_000);
@@ -12,7 +15,7 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await page.getByRole("button", { name: "Anmelden" }).click();
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await expect(page.getByText("© 2026 IT-Michael.NET", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Version 1.0.0 – Changelog öffnen" }).click();
+  await page.getByRole("button", { name: changelogButtonName }).click();
   await expect(page.getByRole("heading", { name: "Changelog" })).toBeVisible();
   await expect(page.getByText("Öffentliche Version 1.0.0", { exact: true })).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Schließen", exact: true }).last().click();
@@ -174,7 +177,7 @@ test("Dashboard bleibt auf Smartphone, Tablet und Desktop bedienbar", async ({ p
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     await expect(page.getByLabel("Zeitraum")).toBeVisible();
     await expect(page.getByText("© 2026 IT-Michael.NET", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Version 1.0.0 – Changelog öffnen" })).toBeVisible();
+    await expect(page.getByRole("button", { name: changelogButtonName })).toBeVisible();
     const overflow = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
