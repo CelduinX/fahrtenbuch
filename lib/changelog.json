@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.3",
+    "date": "2026-07-28",
+    "title": "Docker-Installation in README vereinfachen",
+    "fileCount": 1,
+    "files": [
+      "README.md"
+    ],
+    "fingerprint": "568ce63ea8f58960"
+  },
+  {
     "version": "1.0.2",
     "date": "2026-07-28",
     "title": "Browsertest an Versionsnummer koppeln",

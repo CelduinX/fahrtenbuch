@@ -2,39 +2,45 @@
   <img src="public/brand/logo.png" alt="Fahrtenbuch" width="160">
 </p>
 
-# Fahrtenbuch
+# 🚗 Fahrtenbuch
 
 Eine selbst gehostete Web-Anwendung zur übersichtlichen Erfassung, Auswertung und Sicherung von Dienstfahrten. Alle Daten bleiben in deiner eigenen Docker-Umgebung.
 
-## Funktionen
+## ✨ Funktionen
 
-- Fahrten und wiederkehrende Reisewege verwalten
-- Kilometer, abrechenbare Strecken und Erstattungen auswerten
-- Monatsansicht drucken oder als PDF speichern
-- Fahrten als CSV importieren und exportieren
-- automatische sowie manuelle SQLite-Sicherungen
-- optionaler Zwei-Faktor-Login mit Authenticator-App und Backup-Codes
-- optimierte Darstellung für Desktop, Tablet und Smartphone
+- 🚘 Fahrten und wiederkehrende Reisewege verwalten
+- 📊 Kilometer, abrechenbare Strecken und Erstattungen auswerten
+- 🖨️ Monatsansicht drucken oder als PDF speichern
+- 📄 Fahrten als CSV importieren und exportieren
+- 💾 automatische sowie manuelle SQLite-Sicherungen
+- 🔐 optionaler Zwei-Faktor-Login mit Authenticator-App und Backup-Codes
+- 📱 optimierte Darstellung für Desktop, Tablet und Smartphone
 
-## Installation mit Docker
+## 🐳 Installation mit Docker
 
 Benötigt werden Docker Engine beziehungsweise Docker Desktop sowie Docker Compose. Für den Betrieb reicht eine einzige Datei.
 
-### 1. Compose-Datei herunterladen
+### 1. Compose-Datei anlegen
 
-Linux und macOS:
+Erstelle eine Datei namens `docker-compose.yaml` und kopiere diesen Inhalt hinein:
 
-```bash
-curl -O https://raw.githubusercontent.com/CelduinX/fahrtenbuch/main/docker-compose.yaml
+```yaml
+services:
+  fahrtenbuch:
+    image: ghcr.io/celduinx/fahrtenbuch:latest
+    restart: unless-stopped
+    init: true
+    user: "0:0"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      TZ: Europe/Berlin
+    stop_grace_period: 20s
 ```
 
-Windows PowerShell:
-
-```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/CelduinX/fahrtenbuch/main/docker-compose.yaml -OutFile docker-compose.yaml
-```
-
-Alternativ kann die Datei aus dem neuesten [GitHub-Release](https://github.com/CelduinX/fahrtenbuch/releases/latest) heruntergeladen werden.
+Alternativ kannst du die Datei unter Linux oder macOS mit `curl -O https://raw.githubusercontent.com/CelduinX/fahrtenbuch/main/docker-compose.yaml` herunterladen oder aus dem [neuesten GitHub-Release](https://github.com/CelduinX/fahrtenbuch/releases/latest) beziehen.
 
 ### 2. Anwendung starten
 
@@ -44,14 +50,14 @@ docker compose up -d
 
 Das Fahrtenbuch ist anschließend unter [http://localhost:3000](http://localhost:3000) erreichbar.
 
-### 3. Erster Login
+### 3. 🔑 Erster Login
 
 - Benutzername: `admin`
 - Passwort: `admin`
 
 Ändere diese Zugangsdaten direkt nach dem ersten Login unter **Einstellungen → Zugang**, besonders bevor du die Anwendung über das Internet erreichbar machst. Dort kann zusätzlich die Zwei-Faktor-Authentifizierung eingerichtet werden.
 
-## Aktualisieren
+## 🔄 Aktualisieren
 
 ```bash
 docker compose pull
@@ -60,7 +66,7 @@ docker compose up -d
 
 Die Daten bleiben dabei im lokalen Ordner `./data` erhalten. Vor einem Update empfiehlt sich trotzdem eine manuelle Sicherung unter **Einstellungen → Sicherungen**.
 
-## Betrieb und Fehlerdiagnose
+## 🛠️ Betrieb und Fehlerdiagnose
 
 Status anzeigen:
 
@@ -80,7 +86,7 @@ Anwendung neu starten:
 docker compose restart fahrtenbuch
 ```
 
-## Daten und Sicherungen
+## 💾 Daten und Sicherungen
 
 Die Datenbank und alle Sicherungen liegen dauerhaft im Ordner `./data` neben der Compose-Datei. Ein normaler Container-Neustart oder ein Image-Update löscht diese Daten nicht. Der Ordner wird beim ersten Start automatisch angelegt.
 
@@ -96,7 +102,7 @@ docker compose exec fahrtenbuch node scripts/disable-two-factor.mjs --confirm DI
 
 Dabei werden alle aktiven Sitzungen abgemeldet.
 
-## Beenden oder deinstallieren
+## 🛑 Beenden oder deinstallieren
 
 Container beenden, Daten behalten:
 
@@ -106,7 +112,7 @@ docker compose down
 
 Die gespeicherten Daten werden dabei nicht entfernt. Für eine vollständige Deinstallation muss der Ordner `./data` nach einer geprüften Sicherung bewusst separat gelöscht werden.
 
-## Von einer älteren Docker-Version aktualisieren
+## ⏫ Von einer älteren Docker-Version aktualisieren
 
 Wenn die bisherige Installation bereits `./data:/app/data` verwendet, kann derselbe Datenordner weiterverwendet werden:
 
@@ -123,25 +129,25 @@ docker compose up -d
 
 Die Datenbank wird beim ersten Start automatisch auf das aktuelle Schema gebracht. Zugangsdaten, Fahrten, Reisewege und Sicherungen bleiben erhalten.
 
-## Zugriff über das Internet
+## 🌐 Zugriff über das Internet
 
 Für öffentlichen Zugriff sollte ein Reverse Proxy mit HTTPS, beispielsweise Caddy, Traefik oder Nginx Proxy Manager, vor die Anwendung geschaltet werden. Veröffentliche Port 3000 nicht ungeschützt im Internet und ändere vorher unbedingt die Standard-Zugangsdaten.
 
-## Unterstützte Systeme und Versionen
+## 🖥️ Unterstützte Systeme und Versionen
 
 Das Container-Image unterstützt `linux/amd64` und `linux/arm64`.
 
 - `latest`: aktuellste stabile Version
-- `1.0.0`: exakt festgelegte Version
+- Tags mit vollständiger Versionsnummer: exakt festgelegte Version
 - `1.0`: jeweils neueste Version innerhalb dieser Minor-Version
 
 Images werden über `ghcr.io/celduinx/fahrtenbuch` bereitgestellt.
 
-## Hilfe und Sicherheit
+## 🆘 Hilfe und Sicherheit
 
 Allgemeine Fehler oder Wünsche können als [GitHub-Issue](https://github.com/CelduinX/fahrtenbuch/issues) gemeldet werden. Sicherheitslücken bitte ausschließlich über eine private Sicherheitsmeldung im Bereich **Security** einreichen.
 
-## Lizenz
+## 📜 Lizenz
 
 Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).
 
