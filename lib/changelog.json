@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.4",
+    "date": "2026-07-28",
+    "title": "Statische Grafiken ins Docker-Image aufnehmen",
+    "fileCount": 1,
+    "files": [
+      "Dockerfile"
+    ],
+    "fingerprint": "51f3b739d315e55a"
+  },
+  {
     "version": "1.0.3",
     "date": "2026-07-28",
     "title": "Docker-Installation in README vereinfachen",
