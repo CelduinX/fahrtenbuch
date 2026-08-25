@@ -23,7 +23,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <AppHeader />
-      <main className="page-enter mx-auto w-full max-w-[1380px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+      <main className="app-content page-enter mx-auto w-full max-w-[1380px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
         {user.usesDefaultCredentials ? <DefaultCredentialsNotice /> : null}
         <div className="section-enter mb-5 lg:mb-7">
           <p className="mb-2 text-xs font-extrabold uppercase tracking-[.16em] text-[#475569]">Konfiguration</p>

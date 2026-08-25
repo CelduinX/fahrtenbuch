@@ -20,7 +20,7 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <AppHeader />
-      <main className="page-enter mx-auto w-full max-w-[1380px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+      <main className="app-content page-enter mx-auto w-full max-w-[1380px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
         {user.usesDefaultCredentials ? <DefaultCredentialsNotice /> : null}
         <DashboardClient initialMonth={month} todayMonth={todayMonth} initialData={monthData} routeOptions={toRouteOptions(pairs)} />
       </main>

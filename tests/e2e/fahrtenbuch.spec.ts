@@ -199,6 +199,8 @@ test("Dashboard bleibt auf Smartphone, Tablet und Desktop bedienbar", async ({ p
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 768, height: 1024 },
+    { width: 1023, height: 800 },
+    { width: 1024, height: 800 },
     { width: 1600, height: 900 },
   ]) {
     await page.setViewportSize(viewport);
@@ -207,6 +209,21 @@ test("Dashboard bleibt auf Smartphone, Tablet und Desktop bedienbar", async ({ p
     await expect(page.getByLabel("Zeitraum")).toBeVisible();
     await expect(page.getByText("© 2026 IT-Michael.NET", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: changelogButtonName })).toBeVisible();
+    const usesMobileNavigation = viewport.width < 1024;
+    await expect(page.getByTestId("mobile-app-bar")).toBeVisible({ visible: usesMobileNavigation });
+    await expect(page.getByTestId("mobile-navigation-layer")).toBeVisible({ visible: usesMobileNavigation });
+    await expect(page.getByTestId("mobile-add-trip")).toBeVisible({ visible: usesMobileNavigation });
+    await expect(page.getByTestId("desktop-app-bar")).toBeVisible({ visible: !usesMobileNavigation });
+
+    const activeNavigation = usesMobileNavigation
+      ? page.getByTestId("mobile-navigation-layer").getByRole("link", { name: "Dashboard", exact: true })
+      : page.getByTestId("desktop-app-bar").getByRole("link", { name: "Dashboard", exact: true });
+    await expect(activeNavigation).toHaveAttribute("aria-current", "page");
+
+    if (usesMobileNavigation) {
+      const firstNavigationItem = page.getByTestId("mobile-navigation-layer").getByRole("link", { name: "Dashboard", exact: true });
+      await expect(firstNavigationItem).toHaveCSS("flex-direction", viewport.width >= 600 ? "row" : "column");
+    }
     const overflow = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,

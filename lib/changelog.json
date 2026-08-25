@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.0.6",
+    "date": "2026-08-25",
+    "title": "Adaptive Navigation nach Material Design 3 umsetzen",
+    "fileCount": 7,
+    "files": [
+      "app/globals.css",
+      "app/page.tsx",
+      "app/settings/page.tsx",
+      "app/trips/page.tsx",
+      "components/AppHeader.tsx",
+      "components/SettingsClient.tsx",
+      "tests/e2e/fahrtenbuch.spec.ts"
+    ],
+    "fingerprint": "e5052d0d9ea0da71"
+  },
+  {
     "version": "1.0.5",
     "date": "2026-08-25",
     "title": "Frontend für Smartphones optimieren",

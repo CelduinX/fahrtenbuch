@@ -3,6 +3,7 @@
 import {
   faArrowsLeftRight,
   faCheck,
+  faChevronDown,
   faCircleInfo,
   faClipboard,
   faClock,
@@ -25,7 +26,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { BackupDto, BackupKind, ReimbursementSettingsDto, RoutePairDto, TripCsvImportResultDto, TripDateRangeDto, TwoFactorSetupDto, TwoFactorStatusDto } from "@/lib/types";
 import { Modal } from "./Modal";
 
@@ -45,6 +46,14 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
   const [backups, setBackups] = useState(initialBackups);
   const [reimbursementSettings, setReimbursementSettings] = useState(initialReimbursementSettings);
   const [routeModal, setRouteModal] = useState<{ key: string; route?: RoutePairDto } | null>(null);
+  const settingsTabs = [
+    { id: "routes", title: "Reisewege", description: `${routes.length} gespeicherte Strecken` },
+    { id: "reimbursement", title: "Abrechnung", description: `${(reimbursementSettings.reimbursementRateCents / 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € pro km` },
+    { id: "backups", title: "Sicherungen", description: `${backups.length} Backups vorhanden` },
+    { id: "transfer", title: "Import / Export", description: "Fahrten als CSV" },
+    { id: "credentials", title: "Zugang", description: "Benutzername und Passwort" },
+  ] satisfies Array<{ id: SettingsTab; title: string; description: string }>;
+  const selectedSettingsTab = settingsTabs.find((tab) => tab.id === activeTab) ?? settingsTabs[0];
 
   function selectTab(tab: SettingsTab) {
     setActiveTab(tab);
@@ -75,12 +84,26 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
 
   return (
     <div>
-      <div role="tablist" aria-label="Einstellungsbereiche" aria-describedby="settings-tabs-help" className="mobile-scrollbar section-enter mb-5 flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-2xl border border-[#dbe3ee] bg-white p-2 pb-3 shadow-[0_4px_16px_rgba(15,23,42,.04)] md:mb-6 md:grid md:grid-cols-5 md:overflow-visible md:pb-2">
-        <SettingsTabButton active={activeTab === "routes"} icon="routes" title="Reisewege" description={`${routes.length} gespeicherte Strecken`} onClick={() => selectTab("routes")} />
-        <SettingsTabButton active={activeTab === "reimbursement"} icon="reimbursement" title="Abrechnung" description={`${(reimbursementSettings.reimbursementRateCents / 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € pro km`} onClick={() => selectTab("reimbursement")} />
-        <SettingsTabButton active={activeTab === "backups"} icon="backups" title="Sicherungen" description={`${backups.length} Backups vorhanden`} onClick={() => selectTab("backups")} />
-        <SettingsTabButton active={activeTab === "transfer"} icon="transfer" title="Import / Export" description="Fahrten als CSV" onClick={() => selectTab("transfer")} />
-        <SettingsTabButton active={activeTab === "credentials"} icon="credentials" title="Zugang" description="Benutzername und Passwort" onClick={() => selectTab("credentials")} />
+      <div className="section-enter mb-5 md:hidden">
+        <label htmlFor="settings-section" className="block rounded-2xl border border-[#dbe3ee] bg-white p-2 shadow-[0_5px_18px_rgba(15,23,42,.05)]">
+          <span className="sr-only">Einstellungsbereich auswählen</span>
+          <span className="relative flex min-h-14 items-center rounded-xl bg-[#f8fafc] transition-colors focus-within:bg-[#eff6ff]">
+            <span className="pointer-events-none absolute left-3 grid h-9 w-9 place-items-center rounded-lg bg-[#e0ecff] text-[#2563eb]">
+              <SettingsTabIcon type={activeTab} />
+            </span>
+            <select id="settings-section" value={activeTab} onChange={(event) => selectTab(event.target.value as SettingsTab)} className="focus-ring min-h-14 w-full appearance-none rounded-xl border-0 bg-transparent py-2 pl-14 pr-12 text-[15px] font-extrabold text-[#172033] outline-none">
+              {settingsTabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.title}</option>)}
+            </select>
+            <FontAwesomeIcon icon={faChevronDown} className="pointer-events-none absolute right-4 h-4 w-4 text-[#64748b]" />
+          </span>
+          <span className="block px-3 pb-1 pt-2 text-xs font-medium text-[#64748b]">{selectedSettingsTab.description}</span>
+        </label>
+      </div>
+
+      <div role="tablist" aria-label="Einstellungsbereiche" aria-describedby="settings-tabs-help" className="section-enter mb-6 hidden grid-cols-5 gap-1.5 rounded-2xl border border-[#dbe3ee] bg-white p-1.5 shadow-[0_4px_16px_rgba(15,23,42,.04)] md:grid">
+        {settingsTabs.map((tab) => (
+          <SettingsTabButton key={tab.id} active={activeTab === tab.id} icon={tab.id} title={tab.title} description={tab.description} onClick={() => selectTab(tab.id)} />
+        ))}
       </div>
 
       <div key={activeTab} role="tabpanel" className="section-enter">
@@ -114,21 +137,11 @@ function SettingsTabIcon({ type }: { type: SettingsTab }) {
 }
 
 function SettingsTabButton({ active, icon, title, description, onClick }: { active: boolean; icon: SettingsTab; title: string; description: string; onClick: () => void }) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (active) buttonRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [active]);
-
   return (
-    <button ref={buttonRef} type="button" role="tab" aria-label={title} aria-selected={active} className={`focus-ring min-w-[155px] flex-1 snap-center rounded-xl px-4 py-3.5 text-left transition-[background-color,color,box-shadow,transform] active:scale-[.99] md:min-w-0 md:px-5 ${active ? "bg-[#2563eb] text-white shadow-sm" : "text-[#334155] hover:bg-[#f1f5f9]"}`} onClick={onClick}>
-      <span className="flex items-center gap-3">
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${active ? "bg-white/15 text-white" : "bg-[#eff6ff] text-[#2563eb]"}`}><SettingsTabIcon type={icon} /></span>
-        <span className="min-w-0">
-          <span className="block font-extrabold">{title}</span>
-          <span className={`mt-0.5 block text-xs ${active ? "text-[#bfdbfe]" : "text-[#64748b]"}`}>{description}</span>
-        </span>
-      </span>
+    <button type="button" role="tab" aria-label={`${title} – ${description}`} aria-selected={active} className={`focus-ring relative flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-[14px] font-bold transition-[background-color,color,box-shadow,transform] active:scale-[.99] ${active ? "bg-[#e0ecff] text-[#1d4ed8] shadow-[inset_0_0_0_1px_rgba(37,99,235,.08)]" : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#172033]"}`} onClick={onClick}>
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${active ? "bg-white/70" : "text-[#64748b]"}`}><SettingsTabIcon type={icon} /></span>
+      <span className="truncate">{title}</span>
+      {active ? <span aria-hidden="true" className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-[#2563eb]" /> : null}
     </button>
   );
 }

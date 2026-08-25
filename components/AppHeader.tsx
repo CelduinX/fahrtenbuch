@@ -7,6 +7,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 
+const navigationItems = [
+  { href: "/", label: "Dashboard", icon: faTableCellsLarge },
+  { href: "/trips", label: "Fahrten", icon: faCarSide },
+] as const;
+
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
@@ -21,57 +26,123 @@ export function AppHeader() {
   }
 
   return (
-    <header className="page-enter sticky top-0 z-40 border-b border-[#dbe3ee] bg-white/95 backdrop-blur lg:static">
-      <div className="mx-auto flex h-16 w-full max-w-[1380px] items-center justify-between gap-1 px-2 sm:gap-3 sm:px-6 lg:h-[74px] lg:px-8">
-        <Link href="/" className="focus-ring flex min-h-11 min-w-11 items-center gap-3 rounded-xl">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-[#dbe3ee] sm:h-11 sm:w-11">
-            <Image src="/brand/logo.png" alt="" width={40} height={40} className="h-full w-full object-contain" priority />
-          </span>
-          <span className="hidden sm:block">
-            <span className="block text-[16px] font-extrabold tracking-[-.02em] lg:text-[17px]">Fahrtenbuch</span>
-            <span className="hidden text-[11px] font-medium uppercase tracking-[.14em] text-[#64748b] sm:block">Dienstfahrten</span>
-          </span>
-        </Link>
+    <>
+      <header className="page-enter sticky top-0 z-30 border-b border-[#dbe3ee] bg-white/95 backdrop-blur lg:static">
+        <div data-testid="mobile-app-bar" className="mx-auto flex h-16 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:hidden">
+          <Link href="/" className="focus-ring flex min-h-12 min-w-0 items-center gap-3 rounded-2xl pr-2" aria-label="Fahrtenbuch – Dashboard">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-[#dbe3ee]">
+              <Image src="/brand/logo.png" alt="" width={40} height={40} className="h-full w-full object-contain" priority />
+            </span>
+            <span className="min-w-0 truncate text-[17px] font-extrabold tracking-[-.025em]">Fahrtenbuch</span>
+          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/settings"
+              className={`focus-ring grid h-12 w-12 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] active:scale-95 ${pathname === "/settings" ? "bg-[#e0ecff] text-[#1d4ed8]" : "text-[#475569] hover:bg-[#eff6ff] hover:text-[#2563eb]"}`}
+              aria-label="Einstellungen"
+              aria-current={pathname === "/settings" ? "page" : undefined}
+              title="Einstellungen"
+            >
+              <FontAwesomeIcon icon={faGear} className="h-5 w-5" />
+            </Link>
+            <button
+              className="focus-ring grid h-12 w-12 shrink-0 place-items-center rounded-full text-[#475569] transition-[background-color,color,transform] hover:bg-[#eff6ff] hover:text-[#2563eb] active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
+              type="button"
+              onClick={logout}
+              disabled={isPending}
+              aria-label={isPending ? "Wird abgemeldet" : "Abmelden"}
+              title="Abmelden"
+            >
+              <FontAwesomeIcon icon={faRightFromBracket} className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
-        <nav className="hidden items-center gap-2 lg:flex" aria-label="Hauptnavigation">
-          <Link href="/" className={`btn-ghost focus-ring gap-2 ${pathname === "/" ? "bg-[#eff6ff] text-[#2563eb]" : ""}`}>
-            <FontAwesomeIcon icon={faTableCellsLarge} className="h-[18px] w-[18px]" />
-            Dashboard
+        <div data-testid="desktop-app-bar" className="mx-auto hidden h-[72px] w-full max-w-[1380px] grid-cols-[minmax(150px,1fr)_auto_minmax(230px,1fr)] items-center gap-4 px-6 lg:grid xl:px-8">
+          <Link href="/" className="focus-ring flex min-h-12 min-w-0 items-center gap-3 rounded-2xl pr-2" aria-label="Fahrtenbuch – Dashboard">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-[#dbe3ee]">
+              <Image src="/brand/logo.png" alt="" width={40} height={40} className="h-full w-full object-contain" priority />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[17px] font-extrabold tracking-[-.025em]">Fahrtenbuch</span>
+              <span className="hidden truncate text-[11px] font-medium uppercase tracking-[.14em] text-[#64748b] xl:block">Dienstfahrten</span>
+            </span>
           </Link>
-          <Link href="/trips" className={`btn-ghost focus-ring gap-2 ${pathname === "/trips" ? "bg-[#eff6ff] text-[#2563eb]" : ""}`}>
-            <FontAwesomeIcon icon={faCarSide} className="h-[18px] w-[18px]" />
-            Fahrten
-          </Link>
-          <Link href="/?addTrip=1" className="btn-primary focus-ring gap-2">
-            <FontAwesomeIcon icon={faPlus} className="h-[18px] w-[18px]" />
-            Fahrt hinzufügen
-          </Link>
-          <span className="mx-2 h-6 w-px bg-[#e2e8f0]" />
-          <Link href="/settings" aria-label="Einstellungen" title="Einstellungen" className={`focus-ring grid h-10 w-10 place-items-center rounded-xl border shadow-sm transition-[background-color,border-color,color,transform] active:scale-95 ${pathname === "/settings" ? "border-[#93c5fd] bg-[#eff6ff] text-[#2563eb]" : "border-[#cbd5e1] bg-[#f8fafc] text-[#475569] hover:border-[#93c5fd] hover:bg-[#eff6ff] hover:text-[#2563eb]"}`}>
-            <FontAwesomeIcon icon={faGear} className="h-5 w-5" />
-          </Link>
-          <button className="btn-secondary focus-ring gap-2" type="button" onClick={logout} disabled={isPending}>
-            <FontAwesomeIcon icon={faRightFromBracket} className="h-[18px] w-[18px]" />
-            {isPending ? "Abmelden …" : "Abmelden"}
-          </button>
-        </nav>
 
-        <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1 lg:hidden" aria-label="Mobile Hauptnavigation">
-          <Link href="/" aria-label="Dashboard" className={`focus-ring grid h-11 w-11 place-items-center rounded-xl transition-[background-color,color,transform] active:scale-95 ${pathname === "/" ? "bg-[#eff6ff] text-[#2563eb]" : "text-[#64748b]"}`}>
-            <FontAwesomeIcon icon={faTableCellsLarge} className="h-5 w-5" />
-          </Link>
-          <Link href="/trips" aria-label="Fahrten" className={`focus-ring grid h-11 w-11 place-items-center rounded-xl transition-[background-color,color,transform] active:scale-95 ${pathname === "/trips" ? "bg-[#eff6ff] text-[#2563eb]" : "text-[#64748b]"}`}>
-            <FontAwesomeIcon icon={faCarSide} className="h-5 w-5" />
-          </Link>
-          <Link href="/?addTrip=1" aria-label="Fahrt hinzufügen" className="focus-ring grid h-11 w-11 place-items-center rounded-xl bg-[#2563eb] text-xl text-white shadow-sm active:scale-95"><FontAwesomeIcon icon={faPlus} className="h-5 w-5" /></Link>
-          <Link href="/settings" aria-label="Einstellungen" className={`focus-ring grid h-11 w-11 place-items-center rounded-xl border shadow-sm transition-[background-color,border-color,color,transform] active:scale-95 ${pathname === "/settings" ? "border-[#93c5fd] bg-[#eff6ff] text-[#2563eb]" : "border-[#cbd5e1] bg-[#f8fafc] text-[#475569]"}`}>
-            <FontAwesomeIcon icon={faGear} className="h-5 w-5" />
-          </Link>
-          <button className="focus-ring grid h-11 w-11 place-items-center rounded-xl text-[#64748b] hover:bg-[#f1f5f9]" type="button" onClick={logout} disabled={isPending} aria-label="Abmelden">
-            <FontAwesomeIcon icon={faRightFromBracket} className="h-5 w-5" />
-          </button>
-        </nav>
+          <nav className="flex items-center gap-1.5" aria-label="Hauptnavigation">
+            {navigationItems.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`focus-ring relative inline-flex min-h-12 items-center gap-2 rounded-full px-3.5 text-[14px] font-bold transition-[background-color,color,transform] active:scale-[.98] ${active ? "bg-[#e0ecff] text-[#1d4ed8]" : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#172033]"}`}
+                >
+                  <FontAwesomeIcon icon={item.icon} className="h-[18px] w-[18px]" />
+                  <span>{item.label}</span>
+                  {active ? <span aria-hidden="true" className="absolute inset-x-5 -bottom-[5px] h-0.5 rounded-full bg-[#2563eb]" /> : null}
+                </Link>
+              );
+            })}
+            <Link href="/?addTrip=1" className="btn-primary focus-ring ml-1 min-h-12 gap-2 rounded-full px-4 text-[14px]">
+              <FontAwesomeIcon icon={faPlus} className="h-[18px] w-[18px]" />
+              Fahrt hinzufügen
+            </Link>
+          </nav>
+
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              href="/settings"
+              className={`focus-ring grid h-12 w-12 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] active:scale-95 ${pathname === "/settings" ? "bg-[#e0ecff] text-[#1d4ed8]" : "text-[#475569] hover:bg-[#eff6ff] hover:text-[#2563eb]"}`}
+              aria-label="Einstellungen"
+              aria-current={pathname === "/settings" ? "page" : undefined}
+              title="Einstellungen"
+            >
+              <FontAwesomeIcon icon={faGear} className="h-5 w-5" />
+            </Link>
+            <button
+              className="focus-ring grid h-12 w-12 shrink-0 place-items-center rounded-full text-[#475569] transition-[background-color,color,transform] hover:bg-[#eff6ff] hover:text-[#2563eb] active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
+              type="button"
+              onClick={logout}
+              disabled={isPending}
+              aria-label={isPending ? "Wird abgemeldet" : "Abmelden"}
+              title="Abmelden"
+            >
+              <FontAwesomeIcon icon={faRightFromBracket} className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div data-mobile-navigation data-testid="mobile-navigation-layer" className="mobile-navigation-layer lg:hidden">
+        <div className="mobile-navigation-frame">
+          <nav className="mobile-navigation-surface" aria-label="Mobile Hauptnavigation">
+            {navigationItems.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`mobile-navigation-item focus-ring ${active ? "mobile-navigation-item-active" : ""}`}
+                >
+                  <span className="mobile-navigation-icon" aria-hidden="true">
+                    <FontAwesomeIcon icon={item.icon} className="mobile-navigation-glyph" />
+                  </span>
+                  <span className="mobile-navigation-label">{item.label}</span>
+                </Link>
+              );
+            })}
+            <Link href="/?addTrip=1" data-testid="mobile-add-trip" className="mobile-navigation-item mobile-navigation-item-primary focus-ring" aria-label="Fahrt hinzufügen">
+              <span className="mobile-navigation-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faPlus} className="mobile-navigation-glyph" />
+              </span>
+              <span className="mobile-navigation-label">Neue Fahrt</span>
+            </Link>
+          </nav>
+        </div>
       </div>
-    </header>
+    </>
   );
 }
