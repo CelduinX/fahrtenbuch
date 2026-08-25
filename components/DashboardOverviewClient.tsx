@@ -148,7 +148,7 @@ export function DashboardOverviewClient({ initialData }: { initialData: Dashboar
         </div>
         <label className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[#dbe3ee] bg-white px-4 py-2.5 shadow-sm sm:w-auto sm:min-w-[230px]">
           <span className="text-sm font-bold text-[#475569]">Zeitraum</span>
-          <select className="focus-ring rounded-lg bg-[#eff6ff] px-3 py-2 text-sm font-extrabold text-[#1e3a8a] outline-none" value={data.selectedPeriod} onChange={(event) => changePeriod(event.target.value)} disabled={isPending}>
+          <select className="focus-ring min-h-11 rounded-lg bg-[#eff6ff] px-3 py-2 text-sm font-extrabold text-[#1e3a8a] outline-none" value={data.selectedPeriod} onChange={(event) => changePeriod(event.target.value)} disabled={isPending}>
             {data.availableYears.map((year) => <option key={year} value={year}>{year}</option>)}
             <option value="all">Gesamt</option>
           </select>

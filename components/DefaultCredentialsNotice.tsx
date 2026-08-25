@@ -10,7 +10,7 @@ export function DefaultCredentialsNotice() {
         </span>
         <span><strong>Standard-Zugang aktiv.</strong> Ändere Benutzername und Passwort in den Einstellungen.</span>
       </div>
-      <a href="/settings?tab=credentials" className="self-end font-bold underline decoration-[#c9964d] underline-offset-4 sm:self-auto">Jetzt ändern</a>
+      <a href="/settings?tab=credentials" className="inline-flex min-h-11 items-center self-end px-1 font-bold underline decoration-[#c9964d] underline-offset-4 sm:self-auto">Jetzt ändern</a>
     </div>
   );
 }

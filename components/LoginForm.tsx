@@ -97,7 +97,7 @@ export function LoginForm() {
           {isPending ? "Code wird geprüft …" : "Anmeldung abschließen"}
         </button>
         <button
-          className="focus-ring mx-auto flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-[#475569] hover:bg-[#eef2f7]"
+          className="focus-ring mx-auto flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-[#475569] hover:bg-[#eef2f7]"
           type="button"
           onClick={() => {
             setChallenge(null);

@@ -1,8 +1,37 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { generate } from "otplib";
 import packageJson from "../../package.json";
+import { currentMonth } from "../../lib/dates";
 
 const changelogButtonName = `Version ${packageJson.version} – Changelog öffnen`;
+
+async function expectNoPageOverflow(page: Page, viewportLabel: string) {
+  const overflow = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    offenders: Array.from(document.querySelectorAll("body *")).flatMap((element) => {
+      if (element.closest(".mobile-scrollbar, .print-table-wrap")) return [];
+      const rect = element.getBoundingClientRect();
+      return rect.right > document.documentElement.clientWidth + 1 || rect.left < -1
+        ? [`${element.tagName}.${element.className}`]
+        : [];
+    }).slice(0, 8),
+  }));
+  expect(overflow.scrollWidth, `${viewportLabel}: ${overflow.offenders.join(" | ")}`).toBeLessThanOrEqual(overflow.clientWidth);
+}
+
+async function expectMobileTouchTargets(page: Page, stateLabel: string) {
+  const undersized = await page.locator("button, summary, nav a").evaluateAll((elements) => elements.flatMap((element) => {
+    if (element.closest("nextjs-portal") || element.getAttribute("aria-label") === "Open Next.js Dev Tools") return [];
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    if (rect.width === 0 || rect.height === 0 || style.visibility === "hidden") return [];
+    return rect.width < 43.5 || rect.height < 43.5
+      ? [{ label: element.getAttribute("aria-label") ?? element.textContent?.trim().slice(0, 60), width: rect.width, height: rect.height }]
+      : [];
+  }));
+  expect(undersized, stateLabel).toEqual([]);
+}
 
 test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ page }) => {
   test.setTimeout(90_000);
@@ -116,7 +145,7 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByRole("cell", { name: "09:30", exact: true })).toBeVisible();
 
-  await page.goto("/print?month=2026-07");
+  await page.goto(`/print?month=${currentMonth()}`);
   await expect(page.getByRole("columnheader", { name: "KM abrechenbar", exact: true })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "KM nicht abrechenbar", exact: true })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Mögl. Erstattung", exact: true })).toBeVisible();
@@ -190,4 +219,120 @@ test("Dashboard bleibt auf Smartphone, Tablet und Desktop bedienbar", async ({ p
     }));
     expect(overflow.scrollWidth, `${viewport.width}px: ${overflow.offenders.join(" | ")}`).toBeLessThanOrEqual(overflow.clientWidth);
   }
+});
+
+test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ page }) => {
+  test.setTimeout(120_000);
+  const consoleErrors: string[] = [];
+
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/login");
+  await page.getByLabel("Benutzername").fill("admin");
+  await page.getByLabel("Passwort", { exact: true }).fill("falsch");
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expectNoPageOverflow(page, "320px login error");
+
+  await page.reload();
+  await page.getByLabel("Benutzername").fill("admin");
+  await page.getByLabel("Passwort", { exact: true }).fill("admin");
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+
+  const suffix = Date.now().toString().slice(-6);
+  const routeResponse = await page.request.post("/api/routes", {
+    data: { placeA: `Mobil ${suffix}`, placeB: "Testziel", distanceKm: 18, reimbursedKm: 14, durationMinutes: 30 },
+  });
+  expect(routeResponse.ok()).toBe(true);
+  const routePairId = (await routeResponse.json()).route.id as number;
+  const month = currentMonth();
+  const tripResponse = await page.request.post("/api/trips", {
+    data: { date: `${month}-15`, startTime: "07:45", endTime: "08:15", odometerStart: 12340, routePairId, direction: "A_TO_B" },
+  });
+  expect(tripResponse.ok()).toBe(true);
+
+  const viewports = [
+    { width: 320, height: 568 },
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ];
+
+  for (const viewport of viewports) {
+    const label = `${viewport.width}x${viewport.height}`;
+    await page.setViewportSize(viewport);
+
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expectNoPageOverflow(page, `${label} dashboard`);
+    await expectMobileTouchTargets(page, `${label} dashboard touch targets`);
+    await page.getByRole("button", { name: changelogButtonName }).click();
+    const changelog = page.getByRole("dialog", { name: "Changelog" });
+    await expect(changelog).toBeVisible();
+    await page.waitForTimeout(300);
+    await expectMobileTouchTargets(page, `${label} changelog touch targets`);
+    await changelog.getByRole("button", { name: "Schließen", exact: true }).first().click();
+
+    await page.goto(`/trips?month=${month}`);
+    const tripCard = page.getByTestId("mobile-trip-card").filter({ hasText: `Mobil ${suffix}` }).first();
+    await expect(tripCard).toBeVisible();
+    await expectNoPageOverflow(page, `${label} populated trips`);
+    await tripCard.locator("button").first().click();
+    const tripDialog = page.getByRole("dialog");
+    await expect(tripDialog).toBeVisible();
+    await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+    await expect(tripDialog.locator("footer")).toBeVisible();
+    await page.getByRole("button", { name: "Beginn-Auswahl öffnen" }).click();
+    const hourOptions = page.getByRole("listbox", { name: "Beginn: Stunde" }).getByRole("option");
+    await expect(hourOptions).toHaveCount(13);
+    await page.waitForTimeout(250);
+    const optionSizes = await hourOptions.evaluateAll((options) => options.map((option) => {
+      const rect = option.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }));
+    expect(optionSizes.every((size) => size.width >= 43.5 && size.height >= 43.5), `${label} time options`).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(tripDialog).toBeHidden();
+
+    await page.goto("/trips?month=2099-12");
+    await expect(page.getByText("Noch keine Fahrten in diesem Monat").last()).toBeVisible();
+    await expectNoPageOverflow(page, `${label} empty trips`);
+
+    await page.goto("/settings");
+    for (const tabName of ["Reisewege", "Abrechnung", "Sicherungen", "Import / Export", "Zugang"]) {
+      const tab = page.getByRole("tab", { name: tabName });
+      await tab.click();
+      await expect(tab).toHaveAttribute("aria-selected", "true");
+      await expect(tab).toBeInViewport();
+      await expectNoPageOverflow(page, `${label} settings ${tabName}`);
+    }
+    await page.getByRole("tab", { name: "Reisewege" }).click();
+    await page.getByRole("button", { name: /Reiseweg anlegen/ }).click();
+    const routeDialog = page.getByRole("dialog");
+    await expect(routeDialog).toBeVisible();
+    await page.waitForTimeout(300);
+    await expect(routeDialog.getByRole("button", { name: /^Info zu/ })).toHaveCount(6);
+    await expectMobileTouchTargets(page, `${label} route dialog touch targets`);
+    await routeDialog.getByRole("button", { name: "Schließen" }).click();
+
+    await page.goto(`/print?month=${month}`);
+    await expect(page.getByTestId("print-mobile-cards")).toBeVisible();
+    await expect(page.getByTestId("print-table-wrap")).toBeHidden();
+    await expectNoPageOverflow(page, `${label} populated print preview`);
+    await page.goto("/print?month=2099-12");
+    await expect(page.getByTestId("print-mobile-cards")).toContainText("Für diesen Monat wurden keine Fahrten erfasst.");
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/print?month=${month}`);
+  await page.emulateMedia({ media: "print" });
+  await expect(page.getByTestId("print-mobile-cards")).toBeHidden();
+  await expect(page.getByTestId("print-table-wrap")).toBeVisible();
+  await page.emulateMedia({ media: "screen" });
+
+  await expect(page.locator("nextjs-portal").getByText(/Build Error|Unhandled Runtime Error/)).toHaveCount(0);
+  expect(consoleErrors).toEqual([]);
 });

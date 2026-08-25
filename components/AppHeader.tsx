@@ -22,9 +22,9 @@ export function AppHeader() {
 
   return (
     <header className="page-enter sticky top-0 z-40 border-b border-[#dbe3ee] bg-white/95 backdrop-blur lg:static">
-      <div className="mx-auto flex h-16 w-full max-w-[1380px] items-center justify-between px-4 sm:px-6 lg:h-[74px] lg:px-8">
-        <Link href="/" className="focus-ring flex items-center gap-3 rounded-xl">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-[#dbe3ee]">
+      <div className="mx-auto flex h-16 w-full max-w-[1380px] items-center justify-between gap-1 px-2 sm:gap-3 sm:px-6 lg:h-[74px] lg:px-8">
+        <Link href="/" className="focus-ring flex min-h-11 min-w-11 items-center gap-3 rounded-xl">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-[#dbe3ee] sm:h-11 sm:w-11">
             <Image src="/brand/logo.png" alt="" width={40} height={40} className="h-full w-full object-contain" priority />
           </span>
           <span className="hidden sm:block">
@@ -56,7 +56,7 @@ export function AppHeader() {
           </button>
         </nav>
 
-        <nav className="flex items-center gap-1 lg:hidden" aria-label="Mobile Hauptnavigation">
+        <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1 lg:hidden" aria-label="Mobile Hauptnavigation">
           <Link href="/" aria-label="Dashboard" className={`focus-ring grid h-11 w-11 place-items-center rounded-xl transition-[background-color,color,transform] active:scale-95 ${pathname === "/" ? "bg-[#eff6ff] text-[#2563eb]" : "text-[#64748b]"}`}>
             <FontAwesomeIcon icon={faTableCellsLarge} className="h-5 w-5" />
           </Link>

@@ -45,7 +45,7 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
     function updatePosition() {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = 280;
+      const width = Math.min(280, window.innerWidth - 16);
       const gap = 8;
       const viewportPadding = 8;
       const preferredLeft = alignRight ? rect.right - width : rect.left;
@@ -104,14 +104,14 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
             }
           }}
         />
-        <button type="button" className="focus-ring m-1 grid w-9 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff]" aria-label={`${label}-Auswahl öffnen`} onClick={() => setOpen((current) => !current)}>
+        <button type="button" className="focus-ring grid min-h-11 w-11 shrink-0 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff]" aria-label={`${label}-Auswahl öffnen`} onClick={() => setOpen((current) => !current)}>
           <FontAwesomeIcon icon={faClock} className="h-[18px] w-[18px]" />
         </button>
       </div>
 
       {pickerPresence.rendered && pickerPosition ? createPortal(
-        <div ref={pickerRef} data-state={pickerPresence.state} className="popover fixed z-[70] w-[280px] rounded-2xl border border-[#dbe3ee] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,.18)]" style={pickerPosition}>
-          <div className="mb-4 flex justify-center rounded-xl bg-[#2563eb] p-3 text-center text-3xl font-extrabold tabular-nums text-white"><button type="button" className={`focus-ring rounded-lg px-3 ${pickerStep === "hour" ? "bg-white/20" : ""}`} onClick={() => setPickerStep("hour")}>{hour || "--"}</button><span className="py-0.5">:</span><button type="button" className={`focus-ring rounded-lg px-3 ${pickerStep === "minute" ? "bg-white/20" : ""}`} onClick={() => setPickerStep("minute")} disabled={!hour}>{minute || "00"}</button></div>
+        <div ref={pickerRef} data-state={pickerPresence.state} className="popover fixed z-[70] w-[280px] max-w-[calc(100vw-16px)] rounded-2xl border border-[#dbe3ee] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,.18)]" style={pickerPosition}>
+          <div className="mb-4 flex justify-center rounded-xl bg-[#2563eb] p-2 text-center text-3xl font-extrabold tabular-nums text-white"><button type="button" className={`focus-ring min-h-11 rounded-lg px-3 ${pickerStep === "hour" ? "bg-white/20" : ""}`} onClick={() => setPickerStep("hour")}>{hour || "--"}</button><span className="py-1">:</span><button type="button" className={`focus-ring min-h-11 rounded-lg px-3 ${pickerStep === "minute" ? "bg-white/20" : ""}`} onClick={() => setPickerStep("minute")} disabled={!hour}>{minute || "00"}</button></div>
           <p className="mb-3 text-center text-xs font-extrabold uppercase tracking-[.12em] text-[#64748b]">{pickerStep === "hour" ? "Stunde wählen" : "Minute wählen"}</p>
           <div className="relative mx-auto h-[230px] w-[230px] rounded-full bg-[#eff6ff]" role="listbox" aria-label={`${label}: ${pickerStep === "hour" ? "Stunde" : "Minute"}`}>
             <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2563eb]" />
@@ -119,7 +119,7 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
               const angle = (index / choices.length) * Math.PI * 2 - Math.PI / 2;
               const radius = 42;
               const selected = option === (pickerStep === "hour" ? hour : minute);
-              return <button key={option} type="button" role="option" aria-selected={selected} className={`focus-ring absolute grid h-8 w-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-extrabold tabular-nums ${selected ? "bg-[#2563eb] text-white shadow-md" : "text-[#334155] hover:bg-white"}`} style={{ left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%` }} onMouseDown={(event) => event.preventDefault()} onClick={() => pickerStep === "hour" ? selectHour(option) : selectMinute(option)}>{option}</button>;
+              return <button key={option} type="button" role="option" aria-selected={selected} className={`focus-ring absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-extrabold tabular-nums ${selected ? "bg-[#2563eb] text-white shadow-md" : "text-[#334155] hover:bg-white"}`} style={{ left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%` }} onMouseDown={(event) => event.preventDefault()} onClick={() => pickerStep === "hour" ? selectHour(option) : selectMinute(option)}>{option}</button>;
             })}
           </div>
         </div>,
@@ -227,7 +227,7 @@ function RouteCombobox({ value, options, onTextChange, onSelect }: {
           onChange={(event) => { onTextChange(event.target.value); setOpen(true); }}
           onKeyDown={handleKeyDown}
         />
-        <button type="button" className="focus-ring m-1 grid w-9 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff]" aria-label="Reisewege öffnen" onClick={() => setOpen((current) => !current)}>
+        <button type="button" className="focus-ring grid min-h-11 w-11 shrink-0 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff]" aria-label="Reisewege öffnen" onClick={() => setOpen((current) => !current)}>
           <FontAwesomeIcon icon={faChevronDown} className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
       </div>
@@ -401,8 +401,8 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
             <div className="status-enter flex flex-col gap-3 rounded-xl border border-[#f1d2cf] bg-[#fff7f6] px-4 py-3 text-sm text-[#8f3833] sm:flex-row sm:items-center sm:justify-between">
               <span>Diese Fahrt wirklich dauerhaft löschen?</span>
               <div className="flex gap-2">
-                <button type="button" className="btn-ghost min-h-8 px-3 py-1" onClick={() => setConfirmDelete(false)}>Abbrechen</button>
-                <button type="button" className="btn-danger min-h-8 px-3 py-1" onClick={remove} disabled={isPending}>Löschen</button>
+                <button type="button" className="btn-ghost px-3 py-1" onClick={() => setConfirmDelete(false)}>Abbrechen</button>
+                <button type="button" className="btn-danger px-3 py-1" onClick={remove} disabled={isPending}>Löschen</button>
               </div>
             </div>
           ) : null}

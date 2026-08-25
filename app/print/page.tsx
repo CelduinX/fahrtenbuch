@@ -71,7 +71,29 @@ export default async function PrintPage({ searchParams }: PrintPageProps) {
           <div className="rounded-lg bg-[#f0fdf4] px-4 py-3"><p className="text-[9px] font-extrabold uppercase tracking-[.08em] text-[#475569]">Mögl. Erstattung</p><p className="mt-1 text-sm font-extrabold text-[#15803d]">{formatEuro(data.totalPotentialReimbursementCents)}</p></div>
         </section>
 
-        <div className="overflow-x-auto print:overflow-visible">
+        <section data-testid="print-mobile-cards" className="print-mobile-cards space-y-3 sm:hidden print:hidden" aria-label="Fahrten des Monats">
+          {data.trips.length > 0 ? data.trips.map((trip) => (
+            <article key={trip.id} className="rounded-2xl border border-[#dbe3ee] bg-[#f8fafc] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold uppercase tracking-[.08em] text-[#64748b]">{formatDate(trip.date)} · {trip.startTime}–{trip.endTime}</p>
+                  <h2 className="mt-1 break-words text-base font-extrabold tracking-[-.02em]">{trip.routeLabel}</h2>
+                </div>
+                <span className="shrink-0 rounded-lg bg-[#eff6ff] px-2.5 py-1 text-sm font-extrabold text-[#2563eb]">{trip.distanceKm} km</span>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#dbe3ee] pt-4 text-sm">
+                <div><dt className="text-[10px] font-bold uppercase tracking-[.06em] text-[#64748b]">Kilometerstand</dt><dd className="mt-0.5 font-bold tabular-nums">{trip.odometerStart.toLocaleString("de-DE")} → {trip.odometerEnd.toLocaleString("de-DE")}</dd></div>
+                <div className="text-right"><dt className="text-[10px] font-bold uppercase tracking-[.06em] text-[#64748b]">Abrechenbar</dt><dd className="mt-0.5 font-extrabold tabular-nums">{trip.reimbursedKm} km</dd></div>
+                <div><dt className="text-[10px] font-bold uppercase tracking-[.06em] text-[#64748b]">Nicht abrechenbar</dt><dd className="mt-0.5 font-extrabold tabular-nums text-[#a16207]">{trip.unreimbursedKm} km</dd></div>
+                <div className="text-right"><dt className="text-[10px] font-bold uppercase tracking-[.06em] text-[#64748b]">Mögl. Erstattung</dt><dd className="mt-0.5 font-extrabold tabular-nums text-[#15803d]">{formatEuro(trip.potentialReimbursementCents)}</dd><dd className="text-[10px] text-[#64748b]">{formatEuro(trip.reimbursementRateCents)}/km</dd></div>
+              </dl>
+            </article>
+          )) : (
+            <div className="rounded-2xl border border-[#dbe3ee] bg-[#f8fafc] px-5 py-10 text-center text-sm text-[#64748b]">Für diesen Monat wurden keine Fahrten erfasst.</div>
+          )}
+        </section>
+
+        <div data-testid="print-table-wrap" className="print-table-wrap hidden overflow-x-auto sm:block print:overflow-visible">
         <table className="print-table min-w-[680px] w-full border-collapse text-left text-[9px] print:min-w-0">
           <thead>
             <tr className="border-y border-[#cfd9d2] bg-[#f1f4f2] text-[8px] font-extrabold uppercase tracking-[.055em] text-[#475569]">

@@ -25,7 +25,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { BackupDto, BackupKind, ReimbursementSettingsDto, RoutePairDto, TripCsvImportResultDto, TripDateRangeDto, TwoFactorSetupDto, TwoFactorStatusDto } from "@/lib/types";
 import { Modal } from "./Modal";
 
@@ -75,7 +75,7 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
 
   return (
     <div>
-      <div role="tablist" aria-label="Einstellungsbereiche" className="section-enter mb-5 flex gap-2 overflow-x-auto rounded-2xl border border-[#dbe3ee] bg-white p-2 shadow-[0_4px_16px_rgba(15,23,42,.04)] md:mb-6 md:grid md:grid-cols-5 md:overflow-visible">
+      <div role="tablist" aria-label="Einstellungsbereiche" aria-describedby="settings-tabs-help" className="mobile-scrollbar section-enter mb-5 flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-2xl border border-[#dbe3ee] bg-white p-2 pb-3 shadow-[0_4px_16px_rgba(15,23,42,.04)] md:mb-6 md:grid md:grid-cols-5 md:overflow-visible md:pb-2">
         <SettingsTabButton active={activeTab === "routes"} icon="routes" title="Reisewege" description={`${routes.length} gespeicherte Strecken`} onClick={() => selectTab("routes")} />
         <SettingsTabButton active={activeTab === "reimbursement"} icon="reimbursement" title="Abrechnung" description={`${(reimbursementSettings.reimbursementRateCents / 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € pro km`} onClick={() => selectTab("reimbursement")} />
         <SettingsTabButton active={activeTab === "backups"} icon="backups" title="Sicherungen" description={`${backups.length} Backups vorhanden`} onClick={() => selectTab("backups")} />
@@ -114,8 +114,14 @@ function SettingsTabIcon({ type }: { type: SettingsTab }) {
 }
 
 function SettingsTabButton({ active, icon, title, description, onClick }: { active: boolean; icon: SettingsTab; title: string; description: string; onClick: () => void }) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (active) buttonRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [active]);
+
   return (
-    <button type="button" role="tab" aria-label={title} aria-selected={active} className={`focus-ring min-w-[155px] flex-1 rounded-xl px-4 py-3.5 text-left transition-[background-color,color,box-shadow,transform] active:scale-[.99] md:min-w-0 md:px-5 ${active ? "bg-[#2563eb] text-white shadow-sm" : "text-[#334155] hover:bg-[#f1f5f9]"}`} onClick={onClick}>
+    <button ref={buttonRef} type="button" role="tab" aria-label={title} aria-selected={active} className={`focus-ring min-w-[155px] flex-1 snap-center rounded-xl px-4 py-3.5 text-left transition-[background-color,color,box-shadow,transform] active:scale-[.99] md:min-w-0 md:px-5 ${active ? "bg-[#2563eb] text-white shadow-sm" : "text-[#334155] hover:bg-[#f1f5f9]"}`} onClick={onClick}>
       <span className="flex items-center gap-3">
         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${active ? "bg-white/15 text-white" : "bg-[#eff6ff] text-[#2563eb]"}`}><SettingsTabIcon type={icon} /></span>
         <span className="min-w-0">
@@ -503,6 +509,7 @@ function BackupCodesPanel({ codes, onDismiss }: { codes: string[]; onDismiss: ()
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#2563eb] shadow-sm"><FontAwesomeIcon icon={faKey} className="h-5 w-5" /></span>
         <div><h3 className="font-extrabold text-[#1e3a8a]">Backup-Codes jetzt sichern</h3><p className="mt-1 text-sm leading-6 text-[#475569]">Diese Codes werden nur dieses eine Mal angezeigt. Jeder Code kann genau einmal anstelle des Authenticator-Codes verwendet werden.</p></div>
       </div>
+      <p id="settings-tabs-help" className="sr-only">Auf kleinen Bildschirmen horizontal wischen, um weitere Einstellungsbereiche anzuzeigen.</p>
       <div className="mt-4 grid grid-cols-1 gap-2 rounded-xl border border-[#bfdbfe] bg-white p-4 font-mono text-sm font-bold tracking-[.08em] text-[#1e293b] sm:grid-cols-2">
         {codes.map((code) => <code key={code}>{code}</code>)}
       </div>
@@ -624,7 +631,7 @@ function CredentialsCard({ username, initialTwoFactorStatus }: { username: strin
                   <div className="flex items-center gap-2 font-extrabold text-[#1e3a8a]"><FontAwesomeIcon icon={faQrcode} className="h-4 w-4" /> Authenticator verbinden</div>
                   <p className="mt-2 text-sm leading-6 text-[#64748b]">Scanne den QR-Code und bestätige anschließend den sechsstelligen Code deiner App.</p>
                   <div className="mt-4 grid place-items-center rounded-xl bg-white p-4"><Image src={setup.qrCodeDataUrl} alt="QR-Code für die Authenticator-App" width={240} height={240} unoptimized /></div>
-                  <details className="mt-3 text-sm text-[#475569]"><summary className="cursor-pointer font-bold">Manuellen Schlüssel anzeigen</summary><code className="mt-2 block break-all rounded-lg bg-white p-3 font-mono text-xs">{setup.secret}</code></details>
+                  <details className="mt-3 text-sm text-[#475569]"><summary className="focus-ring inline-flex min-h-11 cursor-pointer items-center rounded-lg px-1 font-bold">Manuellen Schlüssel anzeigen</summary><code className="mt-2 block break-all rounded-lg bg-white p-3 font-mono text-xs">{setup.secret}</code></details>
                 </div>
                 <div><label className="label" htmlFor="two-factor-setup-code">Code aus der Authenticator-App</label><input className="field text-center font-mono text-lg tracking-[.25em]" id="two-factor-setup-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required autoFocus /></div>
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" className="btn-secondary focus-ring" onClick={() => { setSetup(null); setSetupPassword(""); }}>Abbrechen</button><button type="submit" className="btn-primary focus-ring" disabled={isPending}>2FA aktivieren</button></div>
@@ -707,7 +714,7 @@ function RouteModal({ route, onClose, onSaved }: { route?: RoutePairDto; onClose
           </div>
           <div className="rounded-xl bg-[#eff6ff] px-4 py-3 text-sm leading-6 text-[#1e40af]">Nach dem Speichern stehen <strong>Ort A → Ort B</strong> und <strong>Ort B → Ort A</strong> zur Auswahl.</div>
           {error ? <p className="status-enter rounded-xl border border-[#f1d2cf] bg-[#fff4f3] px-4 py-3 text-sm text-[#a33c36]">{error}</p> : null}
-          {confirmDelete ? <div className="status-enter flex items-center justify-between rounded-xl border border-[#f1d2cf] bg-[#fff7f6] px-4 py-3 text-sm text-[#8f3833]"><span>Reiseweg wirklich archivieren?</span><button type="button" className="btn-danger min-h-8 px-3 py-1" onClick={remove} disabled={isPending}>Archivieren</button></div> : null}
+          {confirmDelete ? <div className="status-enter flex flex-col gap-3 rounded-xl border border-[#f1d2cf] bg-[#fff7f6] px-4 py-3 text-sm text-[#8f3833] sm:flex-row sm:items-center sm:justify-between"><span>Reiseweg wirklich archivieren?</span><button type="button" className="btn-danger px-3 py-1" onClick={remove} disabled={isPending}>Archivieren</button></div> : null}
         </div>
         <footer className="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-[#e2e8f0] bg-[#f8fafc] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7"><div>{route && !confirmDelete ? <button type="button" className="btn-danger focus-ring" onClick={() => setConfirmDelete(true)}>Reiseweg archivieren</button> : null}</div><div className="grid grid-cols-2 gap-2 sm:flex"><button type="button" className="btn-secondary focus-ring" onClick={requestClose}>Abbrechen</button><button type="submit" className="btn-primary focus-ring" disabled={isPending}>{isPending ? "Speichern …" : "Speichern"}</button></div></footer>
       </form>
@@ -730,8 +737,8 @@ function RouteField({ id, label, icon, help, className = "", ...inputProps }: {
         {label}
       </label>
       <div className="relative">
-        <input {...inputProps} className={`field pr-11 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${className}`} id={id} aria-describedby={helpId} />
-        <button type="button" className="peer focus-ring absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff] hover:text-[#2563eb] focus:bg-[#eff6ff] focus:text-[#2563eb]" aria-label={`Info zu ${label}`}>
+        <input {...inputProps} className={`field pr-14 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${className}`} id={id} aria-describedby={helpId} />
+        <button type="button" className="peer focus-ring absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff] hover:text-[#2563eb] focus:bg-[#eff6ff] focus:text-[#2563eb]" aria-label={`Info zu ${label}`}>
           <FontAwesomeIcon icon={faCircleInfo} className="h-4 w-4" />
         </button>
         <span id={helpId} role="tooltip" className="pointer-events-none invisible absolute right-0 top-[calc(100%+6px)] z-30 w-max max-w-[240px] rounded-lg bg-[#172554] px-3 py-2 text-xs font-semibold leading-4 text-white opacity-0 shadow-lg transition-opacity peer-hover:visible peer-hover:opacity-100 peer-focus:visible peer-focus:opacity-100">

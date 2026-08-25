@@ -27,7 +27,7 @@ export function AppFooter({ version, changelog }: { version: string; changelog: 
       <footer className="app-footer mt-auto w-full bg-transparent px-4 py-5 text-xs text-[#64748b] sm:px-6">
         <div className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-4">
           <span>© 2026 IT-Michael.NET</span>
-          <button type="button" className="focus-ring inline-flex items-center gap-2 rounded-lg px-2 py-1 font-bold text-[#475569] transition-colors hover:bg-[#e8eef7] hover:text-[#2563eb]" onClick={() => setChangelogOpen(true)} aria-label={`Version ${version} – Changelog öffnen`}>
+          <button type="button" className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-1 font-bold text-[#475569] transition-colors hover:bg-[#e8eef7] hover:text-[#2563eb]" onClick={() => setChangelogOpen(true)} aria-label={`Version ${version} – Changelog öffnen`}>
             <FontAwesomeIcon icon={faCodeBranch} className="h-3.5 w-3.5" />
             Version {version}
           </button>
@@ -48,7 +48,7 @@ export function AppFooter({ version, changelog }: { version: string; changelog: 
                     </div>
                     <h3 className="font-extrabold text-[#273449]">{entry.title}</h3>
                     <details className="mt-3 text-xs text-[#64748b]">
-                      <summary className="focus-ring inline-flex cursor-pointer items-center gap-2 rounded-lg font-bold text-[#475569] hover:text-[#2563eb]">
+                      <summary className="focus-ring inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-1 font-bold text-[#475569] hover:text-[#2563eb]">
                         <FontAwesomeIcon icon={faFileCode} className="h-3.5 w-3.5" />
                         {entry.fileCount} geänderte {entry.fileCount === 1 ? "Datei" : "Dateien"}
                       </summary>

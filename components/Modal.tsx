@@ -38,13 +38,13 @@ export function Modal({ title, description, size = "default", onClose, children 
 
   return createPortal(
     <div data-state={closing ? "closed" : "open"} className="modal-backdrop fixed inset-0 z-50 flex items-end bg-[#0f172a]/35 p-0 backdrop-blur-[2px] sm:grid sm:place-items-center sm:p-6 lg:p-8" onMouseDown={(event) => event.target === event.currentTarget && requestClose()}>
-      <section data-state={closing ? "closed" : "open"} role="dialog" aria-modal="true" aria-labelledby="modal-title" className={`modal-panel max-h-[92dvh] w-full overflow-auto rounded-t-[24px] border border-white/60 bg-white shadow-[0_28px_80px_rgba(15,23,42,.22)] sm:max-h-[calc(100vh-48px)] sm:rounded-[22px] lg:max-h-[calc(100vh-64px)] ${size === "wide" ? "max-w-[820px]" : "max-w-[650px]"}`}>
-        <header className="flex items-start justify-between border-b border-[#e2e8f0] px-5 py-4 sm:px-7 sm:py-5">
+      <section data-state={closing ? "closed" : "open"} role="dialog" aria-modal="true" aria-labelledby="modal-title" className={`modal-panel max-h-[calc(100dvh-env(safe-area-inset-top))] w-full overflow-y-auto overflow-x-hidden rounded-t-[24px] border border-white/60 bg-white overscroll-contain shadow-[0_28px_80px_rgba(15,23,42,.22)] sm:max-h-[calc(100vh-48px)] sm:rounded-[22px] lg:max-h-[calc(100vh-64px)] ${size === "wide" ? "max-w-[820px]" : "max-w-[650px]"}`}>
+        <header className="sticky top-0 z-20 flex items-start justify-between border-b border-[#e2e8f0] bg-white px-5 py-4 sm:px-7 sm:py-5">
           <div>
             <h2 id="modal-title" className="text-xl font-extrabold tracking-[-.025em]">{title}</h2>
             {description ? <p className="mt-1 text-sm text-[#64748b]">{description}</p> : null}
           </div>
-          <button type="button" className="focus-ring grid h-11 w-11 place-items-center rounded-xl text-xl text-[#64748b] hover:bg-[#f1f5f9] sm:h-9 sm:w-9" onClick={requestClose} aria-label="Schließen"><FontAwesomeIcon icon={faXmark} className="h-5 w-5" /></button>
+          <button type="button" className="focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xl text-[#64748b] hover:bg-[#f1f5f9] sm:h-9 sm:w-9" onClick={requestClose} aria-label="Schließen"><FontAwesomeIcon icon={faXmark} className="h-5 w-5" /></button>
         </header>
         {typeof children === "function" ? children(requestClose) : children}
       </section>

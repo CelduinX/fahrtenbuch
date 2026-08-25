@@ -206,7 +206,7 @@ export function DashboardClient({ initialMonth, todayMonth, initialData, routeOp
               <span className="font-extrabold tabular-nums text-[#15803d]">{formatEuro(trip.potentialReimbursementCents)}</span>
             </span>
           </button>
-          <button type="button" className={`focus-ring mt-3 flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-[#475569]"}`} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}>{trip.isChecked ? "✓ Ins analoge Fahrtenbuch übernommen" : "Als übernommen markieren"}</button>
+          <button type="button" className={`focus-ring mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-[#475569]"}`} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}>{trip.isChecked ? "✓ Ins analoge Fahrtenbuch übernommen" : "Als übernommen markieren"}</button>
           </article>
         ))}
         <div className="rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3">

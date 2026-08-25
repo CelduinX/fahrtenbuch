@@ -1,5 +1,26 @@
 [
   {
+    "version": "1.0.5",
+    "date": "2026-08-25",
+    "title": "Frontend für Smartphones optimieren",
+    "fileCount": 12,
+    "files": [
+      "app/globals.css",
+      "app/print/page.tsx",
+      "components/AppFooter.tsx",
+      "components/AppHeader.tsx",
+      "components/DashboardClient.tsx",
+      "components/DashboardOverviewClient.tsx",
+      "components/DefaultCredentialsNotice.tsx",
+      "components/LoginForm.tsx",
+      "components/Modal.tsx",
+      "components/SettingsClient.tsx",
+      "components/TripModal.tsx",
+      "tests/e2e/fahrtenbuch.spec.ts"
+    ],
+    "fingerprint": "ed25699252d280ba"
+  },
+  {
     "version": "1.0.4",
     "date": "2026-07-28",
     "title": "Statische Grafiken ins Docker-Image aufnehmen",
