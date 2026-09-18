@@ -9,8 +9,13 @@ import { calculateLinkedTime, filterRouteOptions, isValidTime, type TimeAnchor }
 import { Modal } from "./Modal";
 import { useAnimatedPresence } from "./useAnimatedPresence";
 
-export const PICKER_HOURS = Array.from({ length: 13 }, (_, index) => String(index + 6).padStart(2, "0"));
-const MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
+export const PICKER_HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
+export const PICKER_MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
+
+const HOUR_RINGS = [
+  { options: ["12", ...PICKER_HOURS.slice(1, 12)], radius: 42 },
+  { options: ["00", ...PICKER_HOURS.slice(13)], radius: 25 },
+] as const;
 
 function TimeField({ id, label, value, alignRight = false, onChange }: {
   id: string;
@@ -108,12 +113,11 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
           <p className="mb-3 text-center text-xs font-extrabold uppercase tracking-[.12em] text-[#64748b]">{pickerStep === "hour" ? "Stunde wählen" : "Minute wählen"}</p>
           <div className="relative mx-auto h-[230px] w-[230px] rounded-full bg-[#eff6ff]" role="listbox" aria-label={`${label}: ${pickerStep === "hour" ? "Stunde" : "Minute"}`}>
             <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2563eb]" />
-            {(pickerStep === "hour" ? PICKER_HOURS : MINUTES).map((option, index, choices) => {
-              const angle = (index / choices.length) * Math.PI * 2 - Math.PI / 2;
-              const radius = 42;
+            {(pickerStep === "hour" ? HOUR_RINGS : [{ options: PICKER_MINUTES, radius: 42 }]).flatMap((ring) => ring.options.map((option, index) => {
+              const angle = (index / ring.options.length) * Math.PI * 2 - Math.PI / 2;
               const selected = option === (pickerStep === "hour" ? hour : minute);
-              return <button key={option} type="button" role="option" aria-selected={selected} className={`focus-ring absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-extrabold tabular-nums ${selected ? "bg-[#2563eb] text-white shadow-md" : "text-[#334155] hover:bg-white"}`} style={{ left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%` }} onMouseDown={(event) => event.preventDefault()} onClick={() => pickerStep === "hour" ? selectHour(option) : selectMinute(option)}>{option}</button>;
-            })}
+              return <button key={option} type="button" role="option" aria-selected={selected} className={`focus-ring absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-extrabold tabular-nums ${selected ? "z-10 bg-[#2563eb] text-white shadow-md" : "text-[#334155] hover:z-10 hover:bg-white"}`} style={{ left: `${50 + Math.cos(angle) * ring.radius}%`, top: `${50 + Math.sin(angle) * ring.radius}%` }} onMouseDown={(event) => event.preventDefault()} onClick={() => pickerStep === "hour" ? selectHour(option) : selectMinute(option)}>{option}</button>;
+            }))}
           </div>
         </div>,
         document.body,

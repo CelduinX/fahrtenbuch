@@ -129,9 +129,12 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
     clientHeight: dialog.clientHeight,
   }));
   expect(dialogOverflow.scrollHeight).toBeLessThanOrEqual(dialogOverflow.clientHeight + 1);
-  await expect(page.getByRole("listbox", { name: "Beginn: Stunde" }).getByRole("option")).toHaveCount(13);
-  await expect(page.getByRole("option", { name: "06", exact: true })).toBeVisible();
-  await expect(page.getByRole("option", { name: "18", exact: true })).toBeVisible();
+  const hourOptions = page.getByRole("listbox", { name: "Beginn: Stunde" }).getByRole("option");
+  await expect(hourOptions).toHaveCount(24);
+  await expect(page.getByRole("option", { name: "00", exact: true })).toBeVisible();
+  await expect(page.getByRole("option", { name: "12", exact: true })).toBeVisible();
+  await expect(page.getByRole("option", { name: "13", exact: true })).toBeVisible();
+  await expect(page.getByRole("option", { name: "23", exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/time-picker.png", fullPage: true });
   await page.getByRole("option", { name: "08", exact: true }).click();
   await expect(page.getByRole("listbox", { name: "Beginn: Minute" }).getByRole("option")).toHaveCount(12);
@@ -337,7 +340,7 @@ test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ 
     await expect(tripDialog.locator("footer")).toBeVisible();
     await page.getByRole("button", { name: "Beginn-Auswahl öffnen" }).click();
     const hourOptions = page.getByRole("listbox", { name: "Beginn: Stunde" }).getByRole("option");
-    await expect(hourOptions).toHaveCount(13);
+    await expect(hourOptions).toHaveCount(24);
     await page.waitForTimeout(250);
     const optionSizes = await hourOptions.evaluateAll((options) => options.map((option) => {
       const rect = option.getBoundingClientRect();
