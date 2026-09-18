@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { generate } from "otplib";
 import packageJson from "../../package.json";
-import { currentMonth } from "../../lib/dates";
+import { currentDate, currentMonth } from "../../lib/dates";
 
 const changelogButtonName = `Version ${packageJson.version} – Changelog öffnen`;
 
@@ -105,11 +105,24 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await page.getByRole("link", { name: "Dashboard", exact: true }).click();
   await page.getByRole("link", { name: "Fahrt hinzufügen", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Neue Fahrt" })).toBeVisible();
+  const quickAddDialog = page.getByRole("dialog");
+  await expect(quickAddDialog.locator("form input").first()).toHaveAttribute("id", "trip-route");
+  await expect(page.getByRole("combobox", { name: "Reiseweg" })).toBeFocused();
+  await page.getByRole("combobox", { name: "Reiseweg" }).fill("bü");
+  await page.getByRole("option", { name: /Büro.*Kunde/ }).click();
+  await expect(page.getByLabel("Datum")).toHaveValue(currentDate());
   await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
+
+  const alternateRouteResponse = await page.request.post("/api/routes", {
+    data: { placeA: "Home", placeB: "Office", distanceKm: 10, reimbursedKm: 10, durationMinutes: 20 },
+  });
+  expect(alternateRouteResponse.ok()).toBe(true);
 
   await page.getByRole("link", { name: "Fahrten", exact: true }).click();
   await expect(page.getByText("Monatsübersicht", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: /Neue Fahrt/ }).click();
+  await expect(page.getByRole("dialog").locator("form input").first()).toHaveAttribute("id", "trip-route");
+  await expect(page.getByRole("combobox", { name: "Reiseweg" })).toBeFocused();
   await page.getByRole("button", { name: "Beginn-Auswahl öffnen" }).click();
   const dialogOverflow = await page.getByRole("dialog").evaluate((dialog) => ({
     scrollHeight: dialog.scrollHeight,
@@ -126,9 +139,23 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await expect(page.getByRole("option", { name: "55", exact: true })).toBeVisible();
   await page.getByRole("option", { name: "00", exact: true }).click();
   await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:00");
-  await page.getByRole("combobox", { name: "Reiseweg" }).fill("Büro → Kunde");
+  await page.getByRole("combobox", { name: "Reiseweg" }).fill("ro");
+  await expect(page.getByText("Kein passender Reiseweg gefunden.")).toBeVisible();
+  await page.getByRole("combobox", { name: "Reiseweg" }).fill("BÜ");
   await page.getByRole("option", { name: /Büro.*Kunde/ }).click();
-  await expect(page.getByLabel("Ende (automatisch)")).toHaveValue("08:30");
+  await expect(page.getByLabel("Ende", { exact: true })).toHaveValue("08:30");
+  await page.getByLabel("Ende", { exact: true }).fill("09:00");
+  await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:30");
+  await page.getByRole("combobox", { name: "Reiseweg" }).fill("ho");
+  await expect(page.getByRole("option", { name: /Home.*Office/ })).toHaveCount(1);
+  await page.getByRole("option", { name: /Home.*Office/ }).click();
+  await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:40");
+  await page.getByRole("combobox", { name: "Reiseweg" }).fill("bü");
+  await page.getByRole("option", { name: /Büro.*Kunde/ }).click();
+  await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:30");
+  await page.getByLabel("Beginn", { exact: true }).fill("08:00");
+  await expect(page.getByLabel("Ende", { exact: true })).toHaveValue("08:30");
+  await page.getByLabel("Datum").fill(`${currentMonth()}-05`);
   await page.getByLabel("KM Beginn").fill("1000");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByRole("cell", { name: "1.018" })).toBeVisible();
@@ -139,6 +166,12 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await expect(page.locator("tbody").getByRole("cell", { name: "4 km", exact: true })).toBeVisible();
   await expect(page.locator("tbody").getByText("7,00 €", { exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/dashboard.png", fullPage: true });
+
+  await page.getByRole("button", { name: /Neue Fahrt/ }).click();
+  await page.getByRole("combobox", { name: "Reiseweg" }).fill("kunde");
+  await page.getByRole("option", { name: /Kunde.*Büro/ }).click();
+  await expect(page.getByLabel("Datum")).toHaveValue(`${currentMonth()}-05`);
+  await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
 
   await page.getByRole("cell", { name: "1.018" }).click();
   await page.getByLabel("Ende", { exact: true }).fill("09:30");

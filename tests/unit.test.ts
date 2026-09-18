@@ -6,6 +6,7 @@ import { hasDefaultCredentials, isDefaultCredentialInput } from "@/lib/default-c
 import { unreimbursedKm } from "@/lib/kilometers";
 import { formatEuro, potentialReimbursementCents } from "@/lib/money";
 import { pairKey, toRouteOptions } from "@/lib/repositories/routes";
+import { calculateLinkedTime, filterRouteOptions } from "@/lib/trip-form";
 import { parseTripCsv, serializeTripCsv } from "@/lib/trip-csv";
 import {
   createBackupCodes,
@@ -120,6 +121,19 @@ describe("Reisewege", () => {
     expect(options.map((option) => option.label)).toEqual(["Berlin → Potsdam", "Potsdam → Berlin"]);
   });
 
+  it("filtert Richtungsbezeichnungen ohne Beachtung der Großschreibung nach Präfix", () => {
+    const options = toRouteOptions([
+      { id: 1, placeA: "Home", placeB: "Office", distanceKm: 10, reimbursedKm: 10, unreimbursedKm: 0, durationMinutes: 20 },
+      { id: 2, placeA: "Lager", placeB: "Home", distanceKm: 12, reimbursedKm: 12, unreimbursedKm: 0, durationMinutes: 25 },
+    ]);
+
+    expect(filterRouteOptions(options, "HO").map((option) => option.label)).toEqual([
+      "Home → Lager",
+      "Home → Office",
+    ]);
+    expect(filterRouteOptions(options, "fice")).toEqual([]);
+  });
+
   it("weist identische Start- und Zielorte zurück", () => {
     expect(routePairSchema.safeParse({ placeA: "Berlin", placeB: "berlin", distanceKm: 10, reimbursedKm: 8, durationMinutes: 20 }).success).toBe(false);
   });
@@ -127,6 +141,22 @@ describe("Reisewege", () => {
   it("begrenzt nicht abgerechnete Kilometer auf null", () => {
     expect(unreimbursedKm(10, 8)).toBe(2);
     expect(unreimbursedKm(1, 2)).toBe(0);
+  });
+});
+
+describe("Zeitkopplung im Fahrtformular", () => {
+  it("berechnet das Ende aus Beginn und Fahrtdauer", () => {
+    expect(calculateLinkedTime("08:15", 45, "start")).toBe("09:00");
+  });
+
+  it("berechnet den Beginn aus Ende und Fahrtdauer", () => {
+    expect(calculateLinkedTime("09:00", 45, "end")).toBe("08:15");
+  });
+
+  it("weist ungültige Zeiten und Tagesgrenzen zurück", () => {
+    expect(calculateLinkedTime("8:15", 45, "start")).toBe("");
+    expect(calculateLinkedTime("23:45", 30, "start")).toBe("");
+    expect(calculateLinkedTime("00:15", 30, "end")).toBe("");
   });
 });
 

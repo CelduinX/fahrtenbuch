@@ -1,6 +1,6 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, max } from "drizzle-orm";
 import { db, ensureDatabaseReady } from "../db";
-import { routePairs, type Direction } from "../db/schema";
+import { routePairs, trips, type Direction } from "../db/schema";
 import { unreimbursedKm } from "../kilometers";
 import type { RouteOptionDto, RoutePairDto } from "../types";
 
@@ -24,7 +24,11 @@ export async function getActiveRoutePairs(): Promise<RoutePairDto[]> {
     distanceKm: routePairs.distanceKm,
     reimbursedKm: routePairs.reimbursedKm,
     durationMinutes: routePairs.durationMinutes,
-  }).from(routePairs).where(isNull(routePairs.archivedAt));
+    lastTripDate: max(trips.date),
+  }).from(routePairs)
+    .leftJoin(trips, eq(trips.routePairId, routePairs.id))
+    .where(isNull(routePairs.archivedAt))
+    .groupBy(routePairs.id);
   return rows.map((row) => ({
     ...row,
     unreimbursedKm: unreimbursedKm(row.distanceKm, row.reimbursedKm),
@@ -52,6 +56,7 @@ function option(pair: RoutePairDto, direction: Direction): RouteOptionDto {
     unreimbursedKm: pair.unreimbursedKm,
     durationMinutes: pair.durationMinutes,
     label: `${origin} → ${destination}`,
+    lastTripDate: pair.lastTripDate ?? null,
   };
 }
 
@@ -79,6 +84,7 @@ function routePairToDto(row: typeof routePairs.$inferSelect): RoutePairDto {
     reimbursedKm: row.reimbursedKm,
     unreimbursedKm: unreimbursedKm(row.distanceKm, row.reimbursedKm),
     durationMinutes: row.durationMinutes,
+    lastTripDate: null,
   };
 }
 

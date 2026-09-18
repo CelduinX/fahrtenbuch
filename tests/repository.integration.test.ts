@@ -22,6 +22,22 @@ describe("Fahrten-Repository", () => {
     expect(await getSuggestedOdometer("2026-07-09")).toBe(1048);
   });
 
+  it("liefert das jüngste Fahrtdatum je Reiseweg über beide Richtungen", async () => {
+    const route = await createRoutePair({ placeA: "Datum A", placeB: "Datum B", distanceKm: 5, reimbursedKm: 5, durationMinutes: 10 });
+    const emptyRoute = await createRoutePair({ placeA: "Ohne Fahrt A", placeB: "Ohne Fahrt B", distanceKm: 6, reimbursedKm: 6, durationMinutes: 12 });
+
+    expect((await getActiveRoutePairs()).find((item) => item.id === emptyRoute.id)?.lastTripDate).toBeNull();
+    const older = await createTrip({ date: "2026-02-03", startTime: "08:00", endTime: "08:10", odometerStart: 5000, routePairId: route.id, direction: "A_TO_B" });
+    const newer = await createTrip({ date: "2026-03-04", startTime: "09:00", endTime: "09:10", odometerStart: 5005, routePairId: route.id, direction: "B_TO_A" });
+
+    expect((await getActiveRoutePairs()).find((item) => item.id === route.id)?.lastTripDate).toBe("2026-03-04");
+
+    await deleteTrip(older.id);
+    await deleteTrip(newer.id);
+    await archiveRoutePair(route.id);
+    await archiveRoutePair(emptyRoute.id);
+  });
+
   it("bewahrt Snapshots nach einer Reisewegänderung", async () => {
     const routes = await getActiveRoutePairs();
     const route = routes[0];

@@ -14,6 +14,7 @@ export type RoutePairDto = {
   reimbursedKm: number;
   unreimbursedKm: number;
   durationMinutes: number;
+  lastTripDate?: string | null;
 };
 
 export type RouteOptionDto = {
@@ -27,6 +28,7 @@ export type RouteOptionDto = {
   unreimbursedKm: number;
   durationMinutes: number;
   label: string;
+  lastTripDate?: string | null;
 };
 
 export type TripDto = {

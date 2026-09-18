@@ -32,6 +32,7 @@ export function DashboardClient({ initialMonth, todayMonth, initialData, routeOp
 }) {
   const [month, setMonth] = useState(initialMonth);
   const [data, setData] = useState(initialData);
+  const [availableRouteOptions, setAvailableRouteOptions] = useState(routeOptions);
   const [modal, setModal] = useState<{ key: string; trip?: TripDto } | null>(null);
   const [error, setError] = useState("");
   const [checkingTripId, setCheckingTripId] = useState<number | null>(null);
@@ -58,8 +59,13 @@ export function DashboardClient({ initialMonth, todayMonth, initialData, routeOp
     });
   }
 
-  function refreshAfterChange(date: string) {
+  function refreshAfterChange(date: string, createdRoutePairId?: number) {
     const targetMonth = date.slice(0, 7);
+    if (createdRoutePairId) {
+      setAvailableRouteOptions((current) => current.map((option) => option.routePairId === createdRoutePairId
+        ? { ...option, lastTripDate: !option.lastTripDate || date > option.lastTripDate ? date : option.lastTripDate }
+        : option));
+    }
     setModal(null);
     startTransition(async () => {
       try { await loadMonth(targetMonth); }
@@ -229,7 +235,7 @@ export function DashboardClient({ initialMonth, todayMonth, initialData, routeOp
           month={month}
           defaultDate={defaultDateForMonth(month)}
           suggestedOdometerStart={data.suggestedOdometerStart}
-          routeOptions={routeOptions}
+          routeOptions={availableRouteOptions}
           onClose={() => setModal(null)}
           onSaved={refreshAfterChange}
         />

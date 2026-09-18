@@ -5,19 +5,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import type { RouteOptionDto, TripDto } from "@/lib/types";
+import { calculateLinkedTime, filterRouteOptions, isValidTime, type TimeAnchor } from "@/lib/trip-form";
 import { Modal } from "./Modal";
 import { useAnimatedPresence } from "./useAnimatedPresence";
 
 export const PICKER_HOURS = Array.from({ length: 13 }, (_, index) => String(index + 6).padStart(2, "0"));
 const MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
-
-function calculateEndTime(startTime: string, durationMinutes: number) {
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(startTime) || durationMinutes <= 0) return "";
-  const startMinutes = Number(startTime.slice(0, 2)) * 60 + Number(startTime.slice(3, 5));
-  const endMinutes = startMinutes + durationMinutes;
-  if (endMinutes >= 24 * 60) return "";
-  return `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
-}
 
 function TimeField({ id, label, value, alignRight = false, onChange }: {
   id: string;
@@ -129,9 +122,10 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
   );
 }
 
-function RouteCombobox({ value, options, onTextChange, onSelect }: {
+function RouteCombobox({ value, options, autoFocus = false, onTextChange, onSelect }: {
   value: string;
   options: RouteOptionDto[];
+  autoFocus?: boolean;
   onTextChange: (value: string) => void;
   onSelect: (option: RouteOptionDto) => void;
 }) {
@@ -140,11 +134,7 @@ function RouteCombobox({ value, options, onTextChange, onSelect }: {
   const menuRef = useRef<HTMLDivElement>(null);
   const menuPresence = useAnimatedPresence(open);
   const [menuPosition, setMenuPosition] = useState<{ left: number; top: number; width: number; maxHeight: number } | null>(null);
-  const query = value.trim().toLocaleLowerCase("de-DE");
-  const hasExactSelection = options.some((option) => option.label === value);
-  const filteredOptions = query && !hasExactSelection
-    ? options.filter((option) => option.label.toLocaleLowerCase("de-DE").includes(query))
-    : options;
+  const filteredOptions = filterRouteOptions(options, value);
 
   useEffect(() => {
     function closeOnOutsideClick(event: MouseEvent) {
@@ -221,8 +211,8 @@ function RouteCombobox({ value, options, onTextChange, onSelect }: {
           value={value}
           placeholder="Reiseweg suchen oder auswählen …"
           required
+          autoFocus={autoFocus}
           autoComplete="off"
-          onFocus={() => setOpen(true)}
           onClick={() => setOpen(true)}
           onChange={(event) => { onTextChange(event.target.value); setOpen(true); }}
           onKeyDown={handleKeyDown}
@@ -267,7 +257,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
   suggestedOdometerStart: number | null;
   routeOptions: RouteOptionDto[];
   onClose: () => void;
-  onSaved: (date: string) => void;
+  onSaved: (date: string, createdRoutePairId?: number) => void;
 }) {
   const currentLabel = trip?.routeLabel ?? "";
   const [date, setDate] = useState(trip?.date ?? defaultDate);
@@ -278,6 +268,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
   const [routeChanged, setRouteChanged] = useState(false);
   const [odometerStart, setOdometerStart] = useState(String(trip?.odometerStart ?? suggestedOdometerStart ?? ""));
   const odometerTouchedRef = useRef(Boolean(trip));
+  const lastEditedTimeRef = useRef<TimeAnchor>("start");
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -308,7 +299,46 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
     setRouteInput(option.label);
     setSelectedRoute(option);
     setRouteChanged(true);
-    if (!trip) setEndTime(calculateEndTime(startTime, option.durationMinutes));
+    if (!trip) {
+      const nextDate = option.lastTripDate ?? defaultDate;
+      let nextStartTime = startTime;
+      setDate(nextDate);
+      if (lastEditedTimeRef.current === "end") {
+        nextStartTime = calculateLinkedTime(endTime, option.durationMinutes, "end");
+        setStartTime(nextStartTime);
+        setError(isValidTime(endTime) && !nextStartTime ? "Beginn und Ende müssen am selben Tag liegen. Fahrten über Mitternacht sind nicht möglich." : "");
+      } else {
+        const nextEndTime = calculateLinkedTime(startTime, option.durationMinutes, "start");
+        setEndTime(nextEndTime);
+        setError(isValidTime(startTime) && !nextEndTime ? "Beginn und Ende müssen am selben Tag liegen. Fahrten über Mitternacht sind nicht möglich." : "");
+      }
+      void suggestOdometer(nextDate, nextStartTime);
+    }
+  }
+
+  function changeStartTime(nextValue: string) {
+    setStartTime(nextValue);
+    if (!trip) {
+      lastEditedTimeRef.current = "start";
+      if (selectedRoute) {
+        const nextEndTime = calculateLinkedTime(nextValue, selectedRoute.durationMinutes, "start");
+        setEndTime(nextEndTime);
+        setError(isValidTime(nextValue) && !nextEndTime ? "Beginn und Ende müssen am selben Tag liegen. Fahrten über Mitternacht sind nicht möglich." : "");
+      }
+    }
+    if (isValidTime(nextValue)) void suggestOdometer(date, nextValue);
+  }
+
+  function changeEndTime(nextValue: string) {
+    setEndTime(nextValue);
+    if (!trip) {
+      lastEditedTimeRef.current = "end";
+      if (selectedRoute) {
+        const nextStartTime = calculateLinkedTime(nextValue, selectedRoute.durationMinutes, "end");
+        setStartTime(nextStartTime);
+        setError(isValidTime(nextValue) && !nextStartTime ? "Beginn und Ende müssen am selben Tag liegen. Fahrten über Mitternacht sind nicht möglich." : "");
+      }
+    }
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -318,8 +348,8 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
       setError("Bitte wähle einen vorhandenen Reiseweg aus der Liste.");
       return;
     }
-    if (!trip && !endTime) {
-      setError("Für diesen Reiseweg fehlt eine Fahrtdauer oder die Fahrt würde über Mitternacht hinausgehen.");
+    if (!trip && (!isValidTime(startTime) || !isValidTime(endTime))) {
+      setError("Beginn und Ende müssen am selben Tag liegen. Fahrten über Mitternacht sind nicht möglich.");
       return;
     }
     const payload: Record<string, unknown> = {
@@ -343,7 +373,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
         setError(result.error ?? "Die Fahrt konnte nicht gespeichert werden.");
         return;
       }
-      onSaved(date);
+      onSaved(date, trip ? undefined : selectedRoute?.routePairId);
     });
   }
 
@@ -366,20 +396,26 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
       {(requestClose) => (
       <form onSubmit={submit}>
         <div className="space-y-5 px-5 py-5 sm:px-7 sm:py-6">
+          {!trip ? <div>
+            <label className="label" htmlFor="trip-route">Reiseweg</label>
+            <RouteCombobox value={routeInput} options={routeOptions} autoFocus onTextChange={changeRouteText} onSelect={chooseRoute} />
+            <p className="mt-2 text-xs text-[#64748b]">Nur zuvor angelegte Reisewege können ausgewählt werden.</p>
+          </div> : null}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="label" htmlFor="trip-date">Datum</label>
               <input className="field" id="trip-date" type="date" value={date} required onChange={(event) => { setDate(event.target.value); void suggestOdometer(event.target.value, startTime); }} />
             </div>
-            <TimeField id="trip-start" label="Beginn" value={startTime} onChange={(nextValue) => { setStartTime(nextValue); if (!trip && selectedRoute) setEndTime(calculateEndTime(nextValue, selectedRoute.durationMinutes)); if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(nextValue)) void suggestOdometer(date, nextValue); }} />
-            {trip ? <TimeField id="trip-end" label="Ende" value={endTime} alignRight onChange={setEndTime} /> : <div><label className="label" htmlFor="trip-end">Ende (automatisch)</label><input className="field bg-[#f8fafc] font-bold text-[#2563eb]" id="trip-end" readOnly value={endTime || "–"} /></div>}
+            <TimeField id="trip-start" label="Beginn" value={startTime} onChange={changeStartTime} />
+            <TimeField id="trip-end" label="Ende" value={endTime} alignRight onChange={changeEndTime} />
           </div>
 
-          <div>
+          {trip ? <div>
             <label className="label" htmlFor="trip-route">Reiseweg</label>
             <RouteCombobox value={routeInput} options={routeOptions} onTextChange={changeRouteText} onSelect={chooseRoute} />
             <p className="mt-2 text-xs text-[#64748b]">Nur zuvor angelegte Reisewege können ausgewählt werden.</p>
-          </div>
+          </div> : null}
 
           <div className="grid grid-cols-1 gap-4 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4 sm:grid-cols-3">
             <div>
