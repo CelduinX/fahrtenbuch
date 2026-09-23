@@ -3,7 +3,6 @@
 import { faCheck, faChevronLeft, faChevronRight, faPlus, faPrint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState, useTransition } from "react";
-import { defaultDateForMonth } from "@/lib/dates";
 import { formatEuro } from "@/lib/money";
 import type { MonthDataDto, RouteOptionDto, TripDto } from "@/lib/types";
 import { TripModal } from "./TripModal";
@@ -24,9 +23,10 @@ function formatDate(date: string) {
   return `${day}.${month}.${year}`;
 }
 
-export function DashboardClient({ initialMonth, todayMonth, initialData, routeOptions }: {
+export function DashboardClient({ initialMonth, todayMonth, todayDate, initialData, routeOptions }: {
   initialMonth: string;
   todayMonth: string;
+  todayDate: string;
   initialData: MonthDataDto;
   routeOptions: RouteOptionDto[];
 }) {
@@ -233,7 +233,7 @@ export function DashboardClient({ initialMonth, todayMonth, initialData, routeOp
           key={modal.key}
           trip={modal.trip}
           month={month}
-          defaultDate={defaultDateForMonth(month)}
+          defaultDate={todayDate}
           suggestedOdometerStart={data.suggestedOdometerStart}
           routeOptions={availableRouteOptions}
           onClose={() => setModal(null)}

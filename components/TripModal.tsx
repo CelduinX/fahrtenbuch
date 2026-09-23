@@ -304,7 +304,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
     setSelectedRoute(option);
     setRouteChanged(true);
     if (!trip) {
-      const nextDate = option.lastTripDate ?? defaultDate;
+      const nextDate = defaultDate;
       let nextStartTime = startTime;
       setDate(nextDate);
       if (lastEditedTimeRef.current === "end") {

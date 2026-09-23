@@ -173,7 +173,7 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await page.getByRole("button", { name: /Neue Fahrt/ }).click();
   await page.getByRole("combobox", { name: "Reiseweg" }).fill("kunde");
   await page.getByRole("option", { name: /Kunde.*Büro/ }).click();
-  await expect(page.getByLabel("Datum")).toHaveValue(`${currentMonth()}-05`);
+  await expect(page.getByLabel("Datum")).toHaveValue(currentDate());
   await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
 
   await page.getByRole("cell", { name: "1.018" }).click();
