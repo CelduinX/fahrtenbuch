@@ -4,7 +4,7 @@ import { faChevronDown, faClock, faMagnifyingGlass } from "@fortawesome/free-sol
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-import type { RouteOptionDto, TripDto } from "@/lib/types";
+import type { RemarkSettingsDto, RouteOptionDto, TripDto } from "@/lib/types";
 import { calculateLinkedTime, filterRouteOptions, isValidTime, type TimeAnchor } from "@/lib/trip-form";
 import { Modal } from "./Modal";
 import { useAnimatedPresence } from "./useAnimatedPresence";
@@ -274,6 +274,32 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
   const odometerTouchedRef = useRef(Boolean(trip));
   const lastEditedTimeRef = useRef<TimeAnchor>("start");
   const [error, setError] = useState("");
+  const [accompanyingStaff, setAccompanyingStaff] = useState(trip?.accompanyingStaff ?? "");
+  const [remark, setRemark] = useState(trip?.remark ?? "");
+  const [remarkSettings, setRemarkSettings] = useState<RemarkSettingsDto | null>(null);
+  const [selectedRemarkId, setSelectedRemarkId] = useState("");
+  const remarkTouched = useRef(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadRemarks() {
+      try {
+        const response = await fetch("/api/settings/remarks", { signal: controller.signal });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Bemerkungsvorlagen konnten nicht geladen werden.");
+        if (controller.signal.aborted) return;
+        setRemarkSettings(result);
+        if (!trip && !remarkTouched.current) {
+          const template = (result as RemarkSettingsDto).templates.find((item) => item.id === result.defaultTemplateId);
+          setRemark(template?.text ?? "");
+          setSelectedRemarkId(template ? String(template.id) : "");
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Bemerkungsvorlagen konnten nicht geladen werden.");
+      }
+    }
+    void loadRemarks();
+    return () => controller.abort();
+  }, [trip]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -357,6 +383,8 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
       return;
     }
     const payload: Record<string, unknown> = {
+      accompanyingStaff,
+      remark,
       date,
       startTime,
       endTime,
@@ -437,6 +465,29 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
           </div>
 
           {error ? <p role="alert" className="status-enter rounded-xl border border-[#f1d2cf] bg-[#fff4f3] px-4 py-3 text-sm font-medium text-[#a33c36]">{error}</p> : null}
+          <div>
+            <label className="label" htmlFor="trip-staff">Mitgenommene Bedienstete</label>
+            <textarea id="trip-staff" className="field" rows={2} maxLength={2000} value={accompanyingStaff} onChange={(event) => setAccompanyingStaff(event.target.value)} />
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="label" htmlFor="trip-remark-template">Bemerkungsvorlage</label>
+              <select id="trip-remark-template" className="field" value={selectedRemarkId} disabled={!remarkSettings} onChange={(event) => {
+                const id = event.target.value;
+                setSelectedRemarkId(id);
+                remarkTouched.current = true;
+                setRemark(remarkSettings?.templates.find((template) => String(template.id) === id)?.text ?? "");
+              }}>
+                <option value="">{remarkSettings ? "Keine Vorlage / eigener Text" : "Vorlagen werden geladen …"}</option>
+                {remarkSettings?.templates.map((template) => <option key={template.id} value={template.id}>{template.text}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="trip-remark">Bemerkung</label>
+              <textarea id="trip-remark" className="field" rows={3} maxLength={2000} value={remark} onChange={(event) => { remarkTouched.current = true; setSelectedRemarkId(""); setRemark(event.target.value); }} />
+              <p className="mt-2 text-xs text-[#64748b]">Vorlagentexte kannst du frei bearbeiten oder ergänzen.</p>
+            </div>
+          </div>
           {confirmDelete ? (
             <div className="status-enter flex flex-col gap-3 rounded-xl border border-[#f1d2cf] bg-[#fff7f6] px-4 py-3 text-sm text-[#8f3833] sm:flex-row sm:items-center sm:justify-between">
               <span>Diese Fahrt wirklich dauerhaft löschen?</span>
@@ -452,7 +503,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
           <div>{trip && !confirmDelete ? <button type="button" className="btn-danger focus-ring" onClick={() => setConfirmDelete(true)}>Fahrt löschen</button> : null}</div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
             <button type="button" className="btn-secondary focus-ring" onClick={requestClose}>Abbrechen</button>
-            <button type="submit" className="btn-primary focus-ring min-w-28" disabled={isPending}>{isPending ? "Speichern …" : "Speichern"}</button>
+            <button type="submit" className="btn-primary focus-ring min-w-28" disabled={isPending || !remarkSettings}>{isPending ? "Speichern …" : "Speichern"}</button>
           </div>
         </footer>
       </form>

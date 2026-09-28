@@ -10,6 +10,8 @@ export type RoutePairDto = {
   id: number;
   placeA: string;
   placeB: string;
+  placeAFullName: string;
+  placeBFullName: string;
   distanceKm: number;
   reimbursedKm: number;
   unreimbursedKm: number;
@@ -31,7 +33,14 @@ export type RouteOptionDto = {
   lastTripDate?: string | null;
 };
 
+export type RemarkSettingsDto = {
+  templates: Array<{ id: number; text: string }>;
+  defaultTemplateId: number | null;
+};
+
 export type TripDto = {
+  accompanyingStaff: string;
+  remark: string;
   id: number;
   date: string;
   startTime: string;
@@ -40,6 +49,8 @@ export type TripDto = {
   direction: Direction | null;
   origin: string;
   destination: string;
+  originFullName: string;
+  destinationFullName: string;
   routeLabel: string;
   distanceKm: number;
   reimbursedKm: number;

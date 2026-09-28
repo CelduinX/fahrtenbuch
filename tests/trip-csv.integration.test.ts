@@ -61,6 +61,7 @@ describe("CSV-Import und -Export", () => {
     }))));
 
     expect(parsed).toEqual([{
+      originFullName: "", destinationFullName: "", accompanyingStaff: "", remark: "",
       date: "2026-07-28",
       startTime: "08:00",
       endTime: "08:30",

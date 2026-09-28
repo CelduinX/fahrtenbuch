@@ -28,6 +28,10 @@ export async function GET(request: Request) {
       routeLabel: trip.routeLabel,
       odometerStart: trip.odometerStart,
       odometerEnd: trip.odometerEnd,
+      originFullName: trip.originFullName,
+      destinationFullName: trip.destinationFullName,
+      accompanyingStaff: trip.accompanyingStaff,
+      remark: trip.remark,
     })));
     const filename = exportAll ? "fahrtenbuch-gesamt.csv" : `fahrtenbuch-${range.from}-bis-${range.to}.csv`;
     return new Response(csv, {

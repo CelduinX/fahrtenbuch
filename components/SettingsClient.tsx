@@ -28,11 +28,14 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { BackupDto, BackupKind, ReimbursementSettingsDto, RoutePairDto, TripCsvImportResultDto, TripDateRangeDto, TwoFactorSetupDto, TwoFactorStatusDto } from "@/lib/types";
+import { RemarkSettingsCard } from "./RemarkSettingsCard";
+import type { RemarkSettingsDto } from "@/lib/types";
 import { Modal } from "./Modal";
 
-export type SettingsTab = "routes" | "reimbursement" | "backups" | "transfer" | "credentials";
+export type SettingsTab = "remarks" | "routes" | "reimbursement" | "backups" | "transfer" | "credentials";
 
-export function SettingsClient({ initialRoutes, initialBackups, initialReimbursementSettings, initialTwoFactorStatus, initialTripDateRange, initialTab, username }: {
+export function SettingsClient({ initialRemarkSettings, initialRoutes, initialBackups, initialReimbursementSettings, initialTwoFactorStatus, initialTripDateRange, initialTab, username }: {
+  initialRemarkSettings: RemarkSettingsDto;
   initialRoutes: RoutePairDto[];
   initialBackups: BackupDto[];
   initialReimbursementSettings: ReimbursementSettingsDto;
@@ -41,6 +44,7 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
   initialTab: SettingsTab;
   username: string;
 }) {
+  const [remarkSettings, setRemarkSettings] = useState(initialRemarkSettings);
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [routes, setRoutes] = useState(initialRoutes);
   const [backups, setBackups] = useState(initialBackups);
@@ -48,6 +52,7 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
   const [routeModal, setRouteModal] = useState<{ key: string; route?: RoutePairDto } | null>(null);
   const settingsTabs = [
     { id: "routes", title: "Reisewege", description: `${routes.length} gespeicherte Strecken` },
+    { id: "remarks", title: "Bemerkungen", description: "Vorlagen und Standardtext" },
     { id: "reimbursement", title: "Abrechnung", description: `${(reimbursementSettings.reimbursementRateCents / 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € pro km` },
     { id: "backups", title: "Sicherungen", description: `${backups.length} Backups vorhanden` },
     { id: "transfer", title: "Import / Export", description: "Fahrten als CSV" },
@@ -67,16 +72,19 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
   }
 
   async function reloadAllData() {
-    const [routesResponse, backupsResponse, reimbursementResponse] = await Promise.all([
+    const [routesResponse, backupsResponse, reimbursementResponse, remarksResponse] = await Promise.all([
       fetch("/api/routes"),
       fetch("/api/backups"),
       fetch("/api/settings/reimbursement"),
+      fetch("/api/settings/remarks"),
     ]);
-    const [routesResult, backupsResult, reimbursementResult] = await Promise.all([
+    const [routesResult, backupsResult, reimbursementResult, remarksResult] = await Promise.all([
       routesResponse.json(),
       backupsResponse.json(),
       reimbursementResponse.json(),
+      remarksResponse.json(),
     ]);
+    if (remarksResponse.ok) setRemarkSettings(remarksResult);
     if (routesResponse.ok) setRoutes(routesResult.routes);
     if (backupsResponse.ok) setBackups(backupsResult.backups);
     if (reimbursementResponse.ok) setReimbursementSettings(reimbursementResult);
@@ -100,13 +108,14 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
         </label>
       </div>
 
-      <div role="tablist" aria-label="Einstellungsbereiche" aria-describedby="settings-tabs-help" className="section-enter mb-6 hidden grid-cols-5 gap-1.5 rounded-2xl border border-[#dbe3ee] bg-white p-1.5 shadow-[0_4px_16px_rgba(15,23,42,.04)] md:grid">
+      <div role="tablist" aria-label="Einstellungsbereiche" aria-describedby="settings-tabs-help" className="section-enter mb-6 hidden grid-cols-6 gap-1.5 rounded-2xl border border-[#dbe3ee] bg-white p-1.5 shadow-[0_4px_16px_rgba(15,23,42,.04)] md:grid">
         {settingsTabs.map((tab) => (
           <SettingsTabButton key={tab.id} active={activeTab === tab.id} icon={tab.id} title={tab.title} description={tab.description} onClick={() => selectTab(tab.id)} />
         ))}
       </div>
 
       <div key={activeTab} role="tabpanel" className="section-enter">
+        {activeTab === "remarks" ? <RemarkSettingsCard settings={remarkSettings} onSaved={setRemarkSettings} /> : null}
         {activeTab === "routes" ? (
           <RoutesCard routes={routes} onCreate={() => setRouteModal({ key: `new-${Date.now()}` })} onEdit={(route) => setRouteModal({ key: `edit-${route.id}`, route })} />
         ) : null}
@@ -124,7 +133,7 @@ export function SettingsClient({ initialRoutes, initialBackups, initialReimburse
 }
 
 function SettingsTabIcon({ type }: { type: SettingsTab }) {
-  const icon = type === "routes"
+  const icon = type === "remarks" ? faClipboard : type === "routes"
     ? faRoute
     : type === "reimbursement"
       ? faEuroSign
@@ -355,10 +364,11 @@ function TransferCard({ initialDateRange, onImported }: {
         </header>
         <form onSubmit={importTrips} className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
           <div className="rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3 text-sm leading-6 text-[#1e40af]">
-            <strong>Erwartete Kopfzeile:</strong>
-            <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white/80 px-3 py-2 text-xs">Datum;Beginn;Ende;Reiseweg;KM Beginn;KM Ende</code>
+            <strong>Erweiterte Kopfzeile:</strong>
+            <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white/80 px-3 py-2 text-xs">Datum;Beginn;Ende;Reiseweg;KM Beginn;KM Ende;Ort Start ausgeschrieben;Ort Ziel ausgeschrieben;Mitgenommene Bedienstete;Bemerkung</code>
+            <p className="mt-2">Das bisherige Format mit den ersten sechs Spalten wird ebenfalls unterstützt. Zusatzangaben bleiben dann leer.</p>
             <strong className="mt-3 block">Beispielzeile:</strong>
-            <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white/80 px-3 py-2 text-xs">2026-07-28;08:00;09:30;Büro → Kunde;1000;1018</code>
+            <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white/80 px-3 py-2 text-xs">2026-07-28;08:00;09:30;HH → B;1000;1018;Hamburg;Berlin;Max Mustermann;Dienstbesprechung</code>
           </div>
           <div>
             <label className="label" htmlFor="trip-csv-file">CSV-Datei auswählen</label>
@@ -692,7 +702,7 @@ function RouteModal({ route, onClose, onSaved }: { route?: RoutePairDto; onClose
   function submit(formData: FormData) {
     setError("");
     startTransition(async () => {
-      const response = await fetch(route ? `/api/routes/${route.id}` : "/api/routes", { method: route ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ placeA: formData.get("placeA"), placeB: formData.get("placeB"), distanceKm: Number(formData.get("distanceKm")), reimbursedKm: Number(formData.get("reimbursedKm")), durationMinutes: Number(formData.get("durationMinutes")) }) });
+      const response = await fetch(route ? `/api/routes/${route.id}` : "/api/routes", { method: route ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ placeA: formData.get("placeA"), placeB: formData.get("placeB"), placeAFullName: formData.get("placeAFullName"), placeBFullName: formData.get("placeBFullName"), distanceKm: Number(formData.get("distanceKm")), reimbursedKm: Number(formData.get("reimbursedKm")), durationMinutes: Number(formData.get("durationMinutes")) }) });
       const result = await response.json();
       if (!response.ok) { setError(result.error ?? "Der Reiseweg konnte nicht gespeichert werden."); return; }
       onSaved();
@@ -715,9 +725,15 @@ function RouteModal({ route, onClose, onSaved }: { route?: RoutePairDto; onClose
       <form action={submit}>
         <div className="space-y-5 px-5 py-5 sm:px-7 sm:py-6">
           <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_auto_1fr]">
-            <RouteField id="route-place-a" name="placeA" label="Ort A" icon={faLocationDot} help="Start- oder Zielort des Reisewegs." defaultValue={route?.placeA} maxLength={120} required autoFocus />
+            <div className="space-y-3">
+            <RouteField id="route-place-a" name="placeA" label="Ort A – Kürzel" icon={faLocationDot} help="Start- oder Zielort des Reisewegs." defaultValue={route?.placeA} maxLength={120} required autoFocus />
+              <RouteField id="route-place-a-full" name="placeAFullName" label="Ort A – ausgeschrieben" icon={faLocationDot} help="Optional. Wird auch bei bestehenden Fahrten, im Druck und PDF angezeigt." defaultValue={route?.placeAFullName} maxLength={240} />
+            </div>
             <span className="hidden pb-3 text-[#64748b] sm:block"><FontAwesomeIcon icon={faArrowsLeftRight} className="h-4 w-4" /></span>
-            <RouteField id="route-place-b" name="placeB" label="Ort B" icon={faLocationDot} help="Der zweite Ort des Reisewegs." defaultValue={route?.placeB} maxLength={120} required />
+            <div className="space-y-3">
+            <RouteField id="route-place-b" name="placeB" label="Ort B – Kürzel" icon={faLocationDot} help="Der zweite Ort des Reisewegs." defaultValue={route?.placeB} maxLength={120} required />
+              <RouteField id="route-place-b-full" name="placeBFullName" label="Ort B – ausgeschrieben" icon={faLocationDot} help="Optional. Wird auch bei bestehenden Fahrten, im Druck und PDF angezeigt." defaultValue={route?.placeBFullName} maxLength={240} />
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <RouteField id="route-distance" name="distanceKm" label="KM gesamt" icon={faRoad} help="Gesamte gefahrene Strecke für eine Richtung." type="number" min="1" step="1" value={distanceKm} onChange={(event) => setDistanceKm(event.target.value)} required />

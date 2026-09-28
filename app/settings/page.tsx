@@ -7,12 +7,13 @@ import { getReimbursementSettings } from "@/lib/repositories/settings";
 import { getTwoFactorStatus } from "@/lib/repositories/two-factor";
 import { getTripDateRange } from "@/lib/repositories/trips";
 import { listBackups } from "@/lib/backups";
+import { getRemarkSettings } from "@/lib/repositories/remarks";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const [user, params] = await Promise.all([requirePageUser(), searchParams]);
-  const initialTab: SettingsTab = params.tab === "backups" || params.tab === "reimbursement" || params.tab === "transfer" || params.tab === "credentials" ? params.tab : "routes";
+  const initialTab: SettingsTab = params.tab === "remarks" || params.tab === "backups" || params.tab === "reimbursement" || params.tab === "transfer" || params.tab === "credentials" ? params.tab : "routes";
   const [routes, backups, reimbursementSettings, twoFactorStatus, tripDateRange] = await Promise.all([
     getActiveRoutePairs(),
     listBackups(),
@@ -31,6 +32,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <p className="mt-1 text-sm text-[#64748b]">Verwalte Reisewege, Abrechnung und deinen persönlichen Zugang.</p>
         </div>
         <SettingsClient
+          initialRemarkSettings={getRemarkSettings()}
           initialRoutes={routes}
           initialBackups={backups}
           initialReimbursementSettings={reimbursementSettings}

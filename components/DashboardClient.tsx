@@ -1,4 +1,6 @@
 "use client";
+import { TripPlaceNote } from "@/components/TripPlaceNote";
+
 
 import { faCheck, faChevronLeft, faChevronRight, faPlus, faPrint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -129,7 +131,7 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
       ) : null}
 
       <div key={`desktop-${month}`} className={`section-enter hidden overflow-x-auto rounded-[20px] border border-[#dbe3ee] bg-white shadow-[0_8px_28px_rgba(15,23,42,.055)] transition-opacity lg:block ${isPending ? "opacity-65" : ""}`}>
-        <table className="w-full min-w-[1320px] border-collapse text-left">
+        <table className="w-full min-w-[1650px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[#dbe3ee] bg-[#f8fafc] text-[11px] font-extrabold uppercase tracking-[.09em] text-[#64748b]">
               <th className="px-3 py-4 text-center">Übernommen</th>
@@ -137,6 +139,8 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
               <th className="px-4 py-4">Beginn</th>
               <th className="px-4 py-4">Ende</th>
               <th className="px-4 py-4">Reiseweg</th>
+              <th className="px-4 py-4">Mitgenommene Bedienstete</th>
+              <th className="px-4 py-4">Bemerkung</th>
               <th className="px-4 py-4 text-right">KM Beginn</th>
               <th className="px-4 py-4 text-right">KM Ende</th>
               <th className="px-5 py-4 text-right">KM gesamt</th>
@@ -148,7 +152,7 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
           <tbody>
             {data.trips.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-6 py-20 text-center">
+                <td colSpan={13} className="px-6 py-20 text-center">
                   <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[#eff6ff] text-2xl text-[#3b5f88]">↗</div>
                   <p className="font-extrabold text-[#334155]">Noch keine Fahrten in diesem Monat</p>
                   <p className="mt-1 text-sm text-[#64748b]">Mit „Neue Fahrt“ erstellst du den ersten Eintrag.</p>
@@ -160,7 +164,9 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
                 <td className="px-5 py-[17px] font-bold text-[#334155]">{formatDate(trip.date)}</td>
                 <td className="px-4 py-[17px] tabular-nums text-[#475569]">{trip.startTime}</td>
                 <td className="px-4 py-[17px] tabular-nums text-[#475569]">{trip.endTime}</td>
-                <td className="px-4 py-[17px] font-semibold">{trip.routeLabel}</td>
+                <td className="px-4 py-[17px] font-semibold">{trip.routeLabel}<TripPlaceNote originFullName={trip.originFullName} destinationFullName={trip.destinationFullName} /></td>
+                <td className="px-4 py-[17px] max-w-[220px] whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.accompanyingStaff || "–"}</td>
+                <td className="px-4 py-[17px] max-w-[260px] whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.remark || "–"}</td>
                 <td className="px-4 py-[17px] text-right tabular-nums text-[#475569]">{trip.odometerStart.toLocaleString("de-DE")}</td>
                 <td className="px-4 py-[17px] text-right tabular-nums text-[#475569]">{trip.odometerEnd.toLocaleString("de-DE")}</td>
                 <td className="px-5 py-[17px] text-right"><span className="inline-flex min-w-16 justify-center rounded-lg bg-[#eff6ff] px-2.5 py-1 font-extrabold tabular-nums text-[#2563eb]">{trip.distanceKm} km</span></td>
@@ -175,7 +181,7 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
           </tbody>
           <tfoot>
             <tr className="border-t border-[#dbe3ee] bg-[#f8fafc]">
-              <td colSpan={7} className="px-5 py-4 text-right text-xs font-extrabold uppercase tracking-[.1em] text-[#64748b]">Gesamt im Monat</td>
+              <td colSpan={9} className="px-5 py-4 text-right text-xs font-extrabold uppercase tracking-[.1em] text-[#64748b]">Gesamt im Monat</td>
               <td className="px-5 py-4 text-right text-base font-extrabold tabular-nums text-[#2563eb]">{data.totalKm.toLocaleString("de-DE")} km</td>
               <td className="px-4 py-4 text-right text-base font-extrabold tabular-nums text-[#475569]">{data.totalReimbursedKm.toLocaleString("de-DE")} km</td>
               <td className="px-5 py-4 text-right text-base font-extrabold tabular-nums text-[#a16207]">{data.totalUnreimbursedKm.toLocaleString("de-DE")} km</td>
@@ -196,7 +202,7 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
           <article key={trip.id} data-testid="mobile-trip-card" className={`soft-card rounded-[18px] border p-4 shadow-[0_5px_18px_rgba(15,23,42,.05)] transition-colors ${trip.isChecked ? "border-[#bbf7d0] bg-[#f0fdf4]" : "border-[#dbe3ee] bg-white"}`}>
           <button type="button" className="focus-ring w-full text-left" onClick={() => setModal({ key: `edit-${trip.id}`, trip })}>
             <span className="mb-3 flex items-start justify-between gap-3">
-              <span><span className="block text-xs font-bold uppercase tracking-[.08em] text-[#64748b]">{formatDate(trip.date)}</span><span className="mt-1 block font-extrabold text-[#273449]">{trip.routeLabel}</span></span>
+              <span><span className="block text-xs font-bold uppercase tracking-[.08em] text-[#64748b]">{formatDate(trip.date)}</span><span className="mt-1 block font-extrabold text-[#273449]">{trip.routeLabel}</span><TripPlaceNote originFullName={trip.originFullName} destinationFullName={trip.destinationFullName} /></span>
               <span className="shrink-0 rounded-lg bg-[#eff6ff] px-2.5 py-1 text-sm font-extrabold text-[#2563eb]">{trip.distanceKm} km</span>
             </span>
             <span className="grid grid-cols-2 gap-3 border-t border-[#edf1f7] pt-3 text-sm">
@@ -211,6 +217,8 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
               <span><span className="block text-[10px] font-bold uppercase tracking-[.08em] text-[#64748b]">Mögliche Erstattung</span><span className="mt-0.5 block text-[10px] tabular-nums text-[#64748b]">{formatEuro(trip.reimbursementRateCents)} je abrechenbarem km</span></span>
               <span className="font-extrabold tabular-nums text-[#15803d]">{formatEuro(trip.potentialReimbursementCents)}</span>
             </span>
+            <span className="mt-3 block min-w-0 border-t border-[#edf1f7] pt-3 text-sm"><span className="block text-[10px] font-bold uppercase text-[#64748b]">Mitgenommene Bedienstete</span><span className="mt-1 block whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.accompanyingStaff || "–"}</span></span>
+            <span className="mt-3 block min-w-0 text-sm"><span className="block text-[10px] font-bold uppercase text-[#64748b]">Bemerkung</span><span className="mt-1 block whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.remark || "–"}</span></span>
           </button>
           <button type="button" className={`focus-ring mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-[#475569]"}`} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}>{trip.isChecked ? "✓ Ins analoge Fahrtenbuch übernommen" : "Als übernommen markieren"}</button>
           </article>

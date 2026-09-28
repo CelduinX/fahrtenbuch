@@ -1,8 +1,13 @@
-export const TRIP_CSV_HEADERS = ["Datum", "Beginn", "Ende", "Reiseweg", "KM Beginn", "KM Ende"] as const;
+export const LEGACY_TRIP_CSV_HEADERS = ["Datum", "Beginn", "Ende", "Reiseweg", "KM Beginn", "KM Ende"] as const;
+export const TRIP_CSV_HEADERS = [...LEGACY_TRIP_CSV_HEADERS, "Ort Start ausgeschrieben", "Ort Ziel ausgeschrieben", "Mitgenommene Bedienstete", "Bemerkung"] as const;
 export const MAX_TRIP_CSV_BYTES = 5 * 1024 * 1024;
 export const MAX_TRIP_CSV_ROWS = 10_000;
 
 export type TripCsvRow = {
+  originFullName?: string;
+  destinationFullName?: string;
+  accompanyingStaff?: string;
+  remark?: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -84,7 +89,8 @@ export function parseTripCsv(text: string): TripCsvRow[] {
   if (text.includes("\uFFFD")) throw new Error("Die CSV-Datei ist nicht gültig UTF-8-codiert.");
   const rows = parseRows(text);
   const header = rows[0]?.values;
-  if (!header || JSON.stringify(header) !== JSON.stringify(TRIP_CSV_HEADERS)) {
+  const legacy = JSON.stringify(header) === JSON.stringify(LEGACY_TRIP_CSV_HEADERS);
+  if (!header || (!legacy && JSON.stringify(header) !== JSON.stringify(TRIP_CSV_HEADERS))) {
     throw new Error(`Die Kopfzeile muss exakt „${TRIP_CSV_HEADERS.join(";")}“ lauten.`);
   }
   const dataRows = rows.slice(1);
@@ -94,8 +100,9 @@ export function parseTripCsv(text: string): TripCsvRow[] {
   }
 
   return dataRows.map(({ values, line }) => {
-    if (values.length !== TRIP_CSV_HEADERS.length) {
-      throw new Error(`Zeile ${line}: Erwartet werden genau ${TRIP_CSV_HEADERS.length} Felder.`);
+    const expectedLength = legacy ? LEGACY_TRIP_CSV_HEADERS.length : TRIP_CSV_HEADERS.length;
+    if (values.length !== expectedLength) {
+      throw new Error(`Zeile ${line}: Erwartet werden genau ${expectedLength} Felder.`);
     }
     const [date, startTime, endTime, routeRaw, odometerStartRaw, odometerEndRaw] = values;
     const routeLabel = routeRaw.trim();
@@ -114,7 +121,15 @@ export function parseTripCsv(text: string): TripCsvRow[] {
     if (odometerEnd <= odometerStart) {
       throw new Error(`Zeile ${line}: KM Ende muss größer als KM Beginn sein.`);
     }
-    return { date, startTime, endTime, routeLabel, odometerStart, odometerEnd };
+    const extra = legacy ? {} : {
+      originFullName: values[6].trim(), destinationFullName: values[7].trim(),
+      accompanyingStaff: values[8].trim(), remark: values[9].trim(),
+    };
+    if ((extra.originFullName?.length ?? 0) > 240 || (extra.destinationFullName?.length ?? 0) > 240
+      || (extra.accompanyingStaff?.length ?? 0) > 2000 || (extra.remark?.length ?? 0) > 2000) {
+      throw new Error(`Zeile ${line}: Eine Zusatzangabe überschreitet die erlaubte Textlänge.`);
+    }
+    return { date, startTime, endTime, routeLabel, odometerStart, odometerEnd, ...extra };
   });
 }
 
@@ -133,12 +148,16 @@ export function serializeTripCsv(rows: TripCsvRow[]) {
       row.routeLabel,
       row.odometerStart,
       row.odometerEnd,
+      row.originFullName ?? "",
+      row.destinationFullName ?? "",
+      row.accompanyingStaff ?? "",
+      row.remark ?? "",
     ].map(escapeCsvField).join(";")),
   ];
   return `\uFEFF${lines.join("\r\n")}\r\n`;
 }
 
-export function tripCsvDuplicateKey(row: TripCsvRow) {
+export function tripCsvDuplicateKey(row: TripCsvRow, extended = false) {
   return JSON.stringify([
     row.date,
     row.startTime,
@@ -146,5 +165,6 @@ export function tripCsvDuplicateKey(row: TripCsvRow) {
     row.routeLabel,
     row.odometerStart,
     row.odometerEnd,
+    ...(extended ? [row.originFullName ?? "", row.destinationFullName ?? "", row.accompanyingStaff ?? "", row.remark ?? ""] : []),
   ]);
 }

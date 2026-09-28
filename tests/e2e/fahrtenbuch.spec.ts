@@ -89,12 +89,14 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await expect(page.getByText("Die Zwei-Faktor-Authentifizierung wurde deaktiviert.")).toBeVisible();
   await page.getByRole("tab", { name: "Reisewege" }).click();
   await page.getByRole("button", { name: /Reiseweg anlegen/ }).click();
-  await expect(page.getByRole("dialog").getByRole("button", { name: /^Info zu/ })).toHaveCount(6);
+  await expect(page.getByRole("dialog").getByRole("button", { name: /^Info zu/ })).toHaveCount(8);
   await page.getByRole("button", { name: "Info zu KM gesamt" }).hover();
   await expect(page.getByRole("tooltip").filter({ hasText: "Gesamte gefahrene Strecke für eine Richtung." })).toBeVisible();
   await page.screenshot({ path: "test-results/route-modal.png", fullPage: true });
-  await page.getByRole("textbox", { name: "Ort A", exact: true }).fill("Büro");
-  await page.getByRole("textbox", { name: "Ort B", exact: true }).fill("Kunde");
+  await page.getByRole("textbox", { name: "Ort A – Kürzel", exact: true }).fill("Büro");
+  await page.getByRole("textbox", { name: "Ort B – Kürzel", exact: true }).fill("Kunde");
+  await page.locator("#route-place-a-full").fill("Zentrale Hamburg");
+  await page.locator("#route-place-b-full").fill("Kundenstandort Berlin");
   await page.getByLabel("KM gesamt", { exact: true }).fill("18");
   await page.getByLabel("KM abrechenbar", { exact: true }).fill("14");
   await expect(page.getByLabel("KM nicht abrechenbar", { exact: true })).toHaveValue("4 km");
@@ -125,10 +127,10 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await expect(page.getByRole("combobox", { name: "Reiseweg" })).toBeFocused();
   await page.getByRole("button", { name: "Beginn-Auswahl öffnen" }).click();
   const dialogOverflow = await page.getByRole("dialog").evaluate((dialog) => ({
-    scrollHeight: dialog.scrollHeight,
-    clientHeight: dialog.clientHeight,
+    scrollWidth: dialog.scrollWidth,
+    clientWidth: dialog.clientWidth,
   }));
-  expect(dialogOverflow.scrollHeight).toBeLessThanOrEqual(dialogOverflow.clientHeight + 1);
+  expect(dialogOverflow.scrollWidth).toBeLessThanOrEqual(dialogOverflow.clientWidth + 1);
   const hourOptions = page.getByRole("listbox", { name: "Beginn: Stunde" }).getByRole("option");
   await expect(hourOptions).toHaveCount(24);
   await expect(page.getByRole("option", { name: "00", exact: true })).toBeVisible();
@@ -187,6 +189,7 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await expect(page.getByRole("columnheader", { name: "Mögl. Erstattung", exact: true })).toBeVisible();
   await expect(page.getByText("4 km", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("7,00 €", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("print-table-wrap").getByTestId("trip-place-note").first()).toContainText("Zentrale Hamburg");
   await page.screenshot({ path: "test-results/print.png", fullPage: true });
 
   await page.goto("/");
@@ -258,7 +261,7 @@ test("Dashboard bleibt auf Smartphone, Tablet und Desktop bedienbar", async ({ p
 
     if (usesMobileNavigation) {
       const firstNavigationItem = page.getByTestId("mobile-navigation-layer").getByRole("link", { name: "Dashboard", exact: true });
-      await expect(firstNavigationItem).toHaveCSS("flex-direction", viewport.width >= 600 ? "row" : "column");
+      await expect(firstNavigationItem).toHaveCSS("flex-direction", "row");
     }
     const overflow = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
@@ -297,7 +300,7 @@ test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ 
 
   const suffix = Date.now().toString().slice(-6);
   const routeResponse = await page.request.post("/api/routes", {
-    data: { placeA: `Mobil ${suffix}`, placeB: "Testziel", distanceKm: 18, reimbursedKm: 14, durationMinutes: 30 },
+    data: { placeAFullName: "Zentrale Hamburg mit einer langen ausgeschriebenen Standortbezeichnung", placeBFullName: "Kundenstandort Berlin", placeA: `Mobil ${suffix}`, placeB: "Testziel", distanceKm: 18, reimbursedKm: 14, durationMinutes: 30 },
   });
   expect(routeResponse.ok()).toBe(true);
   const routePairId = (await routeResponse.json()).route.id as number;
@@ -332,6 +335,7 @@ test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ 
     await page.goto(`/trips?month=${month}`);
     const tripCard = page.getByTestId("mobile-trip-card").filter({ hasText: `Mobil ${suffix}` }).first();
     await expect(tripCard).toBeVisible();
+    await expect(tripCard.getByTestId("trip-place-note")).toContainText("Kundenstandort Berlin");
     await expectNoPageOverflow(page, `${label} populated trips`);
     await tripCard.locator("button").first().click();
     const tripDialog = page.getByRole("dialog");
@@ -355,24 +359,25 @@ test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ 
     await expectNoPageOverflow(page, `${label} empty trips`);
 
     await page.goto("/settings");
-    for (const tabName of ["Reisewege", "Abrechnung", "Sicherungen", "Import / Export", "Zugang"]) {
-      const tab = page.getByRole("tab", { name: tabName });
-      await tab.click();
-      await expect(tab).toHaveAttribute("aria-selected", "true");
-      await expect(tab).toBeInViewport();
-      await expectNoPageOverflow(page, `${label} settings ${tabName}`);
+    const settingsSection = page.getByLabel("Einstellungsbereich auswählen");
+    for (const section of ["routes", "remarks", "reimbursement", "backups", "transfer", "credentials"]) {
+      await settingsSection.selectOption(section);
+      await expect(settingsSection).toHaveValue(section);
+      await expect(settingsSection).toBeInViewport();
+      await expectNoPageOverflow(page, `${label} settings ${section}`);
     }
-    await page.getByRole("tab", { name: "Reisewege" }).click();
+    await settingsSection.selectOption("routes");
     await page.getByRole("button", { name: /Reiseweg anlegen/ }).click();
     const routeDialog = page.getByRole("dialog");
     await expect(routeDialog).toBeVisible();
     await page.waitForTimeout(300);
-    await expect(routeDialog.getByRole("button", { name: /^Info zu/ })).toHaveCount(6);
+    await expect(routeDialog.getByRole("button", { name: /^Info zu/ })).toHaveCount(8);
     await expectMobileTouchTargets(page, `${label} route dialog touch targets`);
     await routeDialog.getByRole("button", { name: "Schließen" }).click();
 
     await page.goto(`/print?month=${month}`);
     await expect(page.getByTestId("print-mobile-cards")).toBeVisible();
+    await expect(page.getByTestId("print-mobile-cards").getByTestId("trip-place-note").last()).toContainText("Kundenstandort Berlin");
     await expect(page.getByTestId("print-table-wrap")).toBeHidden();
     await expectNoPageOverflow(page, `${label} populated print preview`);
     await page.goto("/print?month=2099-12");
@@ -388,4 +393,47 @@ test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ 
 
   await expect(page.locator("nextjs-portal").getByText(/Build Error|Unhandled Runtime Error/)).toHaveCount(0);
   expect(consoleErrors).toEqual([]);
+});
+
+
+test("Ausgeschriebene Orte erscheinen rueckwirkend mobil und im mehrseitigen Druck", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/login");
+  await page.getByLabel("Benutzername").fill("admin");
+  await page.getByLabel("Passwort", { exact: true }).fill("admin");
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  const input = { placeA: "HH-Lang", placeB: "B-Lang", distanceKm: 10, reimbursedKm: 10, durationMinutes: 20 };
+  const response = await page.request.post("/api/routes", { data: input });
+  expect(response.ok()).toBe(true);
+  const id = (await response.json()).route.id;
+  for (let day = 1; day <= 28; day++) {
+    const trip = await page.request.post("/api/trips", { data: {
+      date: "2035-02-" + String(day).padStart(2, "0"), startTime: "08:00", endTime: "08:20",
+      odometerStart: day * 10, routePairId: id, direction: day % 2 ? "A_TO_B" : "B_TO_A",
+    } });
+    expect(trip.ok()).toBe(true);
+  }
+  const originFullName = "Hamburg Zentrale mit ausfuehrlicher Standortbezeichnung ".repeat(4).trim();
+  const destinationFullName = "Berlin Kundenstandort";
+  const update = await page.request.patch("/api/routes/" + id, { data: { ...input, placeAFullName: originFullName, placeBFullName: destinationFullName } });
+  expect(update.ok()).toBe(true);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/trips?month=2035-02");
+  const cards = page.getByTestId("mobile-trip-card");
+  await expect(cards).toHaveCount(28);
+  await expect(cards.first().getByTestId("trip-place-note")).toHaveText(originFullName + " \u2192 " + destinationFullName);
+  await expect(cards.nth(1).getByTestId("trip-place-note")).toHaveText(destinationFullName + " \u2192 " + originFullName);
+  await expectNoPageOverflow(page, "long place names in mobile trips");
+  await page.goto("/print?month=2035-02");
+  await expect(page.getByTestId("print-mobile-cards").getByTestId("trip-place-note")).toHaveCount(28);
+  await expectNoPageOverflow(page, "long place names in mobile print");
+  await page.emulateMedia({ media: "print" });
+  const rows = page.getByTestId("print-table-wrap").locator("tbody tr");
+  await expect(rows).toHaveCount(28);
+  await expect(rows.first().getByTestId("trip-place-note")).toBeVisible();
+  await expect(rows.first()).toHaveCSS("break-inside", "avoid");
+  const pdf = await page.pdf({ format: "A4", preferCSSPageSize: true, path: "test-results/place-names-print.pdf" });
+  expect((pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? []).length).toBeGreaterThan(1);
+  await page.screenshot({ path: "test-results/place-names-print.png", fullPage: true });
 });

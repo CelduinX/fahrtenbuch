@@ -7,6 +7,7 @@ import { ensureDatabaseReady, sqlite } from "@/lib/db";
 import { createRoutePair, getActiveRoutePairs } from "@/lib/repositories/routes";
 import { getReimbursementSettings, updateReimbursementSettings } from "@/lib/repositories/settings";
 import { createTrip, getTripsForMonth } from "@/lib/repositories/trips";
+import { getRemarkSettings, updateRemarkSettings } from "@/lib/repositories/remarks";
 
 describe("SQLite-Sicherungen", () => {
   beforeAll(() => {
@@ -16,7 +17,7 @@ describe("SQLite-Sicherungen", () => {
 
   it("erstellt eine Sicherung und stellt Fahrten sowie Reisewege wieder her", async () => {
     await updateReimbursementSettings(55);
-    const originalRoute = await createRoutePair({ placeA: "Büro", placeB: "Kunde", distanceKm: 22, reimbursedKm: 17, durationMinutes: 25 });
+    const originalRoute = await createRoutePair({ placeAFullName: "Zentrale Hamburg", placeBFullName: "Kundenstandort Berlin", placeA: "Büro", placeB: "Kunde", distanceKm: 22, reimbursedKm: 17, durationMinutes: 25 });
     await createTrip({ date: "2026-07-10", startTime: "08:00", endTime: "09:00", odometerStart: 2000, routePairId: originalRoute.id, direction: "A_TO_B" });
     const backup = await createBackup("manual");
 
@@ -29,6 +30,8 @@ describe("SQLite-Sicherungen", () => {
     expect(result.trips).toBe(1);
     expect(await getActiveRoutePairs()).toEqual([expect.objectContaining({ placeA: "Büro", placeB: "Kunde", distanceKm: 22, reimbursedKm: 17 })]);
     expect((await getTripsForMonth("2026-07")).trips).toEqual([expect.objectContaining({
+      originFullName: "Zentrale Hamburg",
+      destinationFullName: "Kundenstandort Berlin",
       reimbursedKm: 17,
       unreimbursedKm: 5,
       reimbursementRateCents: 55,
@@ -39,6 +42,7 @@ describe("SQLite-Sicherungen", () => {
   });
 
   it("stellt ältere Sicherungen ohne Erstattungsspalten vollständig abgerechnet wieder her", async () => {
+    updateRemarkSettings({ templates: [{ text: "Aktuelle Vorlage" }], defaultTemplateIndex: 0 });
     const backupDirectory = process.env.BACKUP_DIR!;
     fs.mkdirSync(backupDirectory, { recursive: true });
     const backupId = "fahrtenbuch-safety-2026-07-23T12-00-00-000Z.sqlite";
@@ -65,6 +69,10 @@ describe("SQLite-Sicherungen", () => {
     await restoreBackup(backupId);
     expect(await getActiveRoutePairs()).toEqual([expect.objectContaining({ distanceKm: 11, reimbursedKm: 11, unreimbursedKm: 0 })]);
     expect((await getTripsForMonth("2025-01")).trips).toEqual([expect.objectContaining({
+      originFullName: "",
+      destinationFullName: "",
+      accompanyingStaff: "",
+      remark: "",
       distanceKm: 11,
       reimbursedKm: 11,
       unreimbursedKm: 0,
@@ -72,5 +80,6 @@ describe("SQLite-Sicherungen", () => {
       potentialReimbursementCents: 440,
     })]);
     expect(await getReimbursementSettings()).toEqual({ reimbursementRateCents: 55 });
+    expect(getRemarkSettings()).toEqual({ templates: [], defaultTemplateId: null });
   });
 });

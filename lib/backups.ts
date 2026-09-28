@@ -122,6 +122,10 @@ export function restoreBackup(id: string) {
     const backupTables = new Set((backupColumns.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>).map((table) => table.name));
     const hasAppSettings = backupTables.has("app_settings")
       && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "reimbursement_rate_cents");
+    const hasDefaultRemark = backupTables.has("app_settings")
+      && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "default_remark_template_id");
+    const hasRemarkTemplates = backupTables.has("remark_templates");
+    const textColumns = ["origin_full_name_snapshot", "destination_full_name_snapshot", "accompanying_staff", "remark"];
     backupColumns.close();
     sqlite.prepare("ATTACH DATABASE ? AS restore_db").run(sourcePath);
     try {
@@ -129,15 +133,26 @@ export function restoreBackup(id: string) {
         sqlite.exec(`
           DELETE FROM trips;
           DELETE FROM route_pairs;
+          DELETE FROM remark_templates;
+          UPDATE app_settings SET default_remark_template_id = NULL WHERE id = 1;
 
-          INSERT INTO route_pairs (id, place_a, place_b, pair_key, distance_km, reimbursed_km, duration_minutes, archived_at, created_at, updated_at)
-          SELECT id, place_a, place_b, pair_key, distance_km, ${hasRouteReimbursement ? "reimbursed_km" : "distance_km"}, ${hasDuration ? "duration_minutes" : "0"}, archived_at, created_at, updated_at
+          INSERT INTO route_pairs (id, place_a, place_b, place_a_full_name, place_b_full_name, pair_key, distance_km, reimbursed_km, duration_minutes, archived_at, created_at, updated_at)
+          SELECT id, place_a, place_b, ${routeColumnNames.has("place_a_full_name") ? "place_a_full_name" : "''"}, ${routeColumnNames.has("place_b_full_name") ? "place_b_full_name" : "''"}, pair_key, distance_km, ${hasRouteReimbursement ? "reimbursed_km" : "distance_km"}, ${hasDuration ? "duration_minutes" : "0"}, archived_at, created_at, updated_at
           FROM restore_db.route_pairs;
 
-          INSERT INTO trips (id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, reimbursed_km_snapshot, reimbursement_rate_cents_snapshot, odometer_start, is_checked, created_at, updated_at)
-          SELECT id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, ${hasTripReimbursement ? "reimbursed_km_snapshot" : "distance_km_snapshot"}, ${hasTripReimbursementRate ? "reimbursement_rate_cents_snapshot" : "40"}, odometer_start, ${hasChecked ? "is_checked" : "CASE WHEN substr(date, 6, 2) NOT IN ('06', '07') THEN 1 ELSE 0 END"}, created_at, updated_at
+          INSERT INTO trips (id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, reimbursed_km_snapshot, reimbursement_rate_cents_snapshot, odometer_start, is_checked, created_at, updated_at, ${textColumns.join(", ")})
+          SELECT id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, ${hasTripReimbursement ? "reimbursed_km_snapshot" : "distance_km_snapshot"}, ${hasTripReimbursementRate ? "reimbursement_rate_cents_snapshot" : "40"}, odometer_start, ${hasChecked ? "is_checked" : "CASE WHEN substr(date, 6, 2) NOT IN ('06', '07') THEN 1 ELSE 0 END"}, created_at, updated_at, ${textColumns.map((name) => tripColumnNames.has(name) ? name : "''").join(", ")}
           FROM restore_db.trips;
         `);
+        if (hasRemarkTemplates) {
+          sqlite.exec("INSERT INTO remark_templates (id, text) SELECT id, text FROM restore_db.remark_templates");
+        }
+        if (hasDefaultRemark && hasRemarkTemplates) {
+          sqlite.exec(`UPDATE app_settings SET default_remark_template_id = (
+            SELECT default_remark_template_id FROM restore_db.app_settings WHERE id = 1
+          ) WHERE id = 1`);
+          sqlite.exec("UPDATE app_settings SET default_remark_template_id = NULL WHERE default_remark_template_id NOT IN (SELECT id FROM remark_templates)");
+        }
         if (hasAppSettings) {
           sqlite.exec(`
             UPDATE app_settings

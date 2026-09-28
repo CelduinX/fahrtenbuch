@@ -21,6 +21,8 @@ export async function getActiveRoutePairs(): Promise<RoutePairDto[]> {
     id: routePairs.id,
     placeA: routePairs.placeA,
     placeB: routePairs.placeB,
+    placeAFullName: routePairs.placeAFullName,
+    placeBFullName: routePairs.placeBFullName,
     distanceKm: routePairs.distanceKm,
     reimbursedKm: routePairs.reimbursedKm,
     durationMinutes: routePairs.durationMinutes,
@@ -70,6 +72,8 @@ export async function getActiveRoutePair(id: number) {
 type RoutePairInput = {
   placeA: string;
   placeB: string;
+  placeAFullName?: string;
+  placeBFullName?: string;
   distanceKm: number;
   reimbursedKm: number;
   durationMinutes: number;
@@ -80,6 +84,8 @@ function routePairToDto(row: typeof routePairs.$inferSelect): RoutePairDto {
     id: row.id,
     placeA: row.placeA,
     placeB: row.placeB,
+    placeAFullName: row.placeAFullName,
+    placeBFullName: row.placeBFullName,
     distanceKm: row.distanceKm,
     reimbursedKm: row.reimbursedKm,
     unreimbursedKm: unreimbursedKm(row.distanceKm, row.reimbursedKm),
@@ -94,6 +100,8 @@ export async function createRoutePair(input: RoutePairInput) {
   const values = {
     placeA: normalizePlace(input.placeA),
     placeB: normalizePlace(input.placeB),
+    ...(input.placeAFullName !== undefined ? { placeAFullName: normalizePlace(input.placeAFullName) } : {}),
+    ...(input.placeBFullName !== undefined ? { placeBFullName: normalizePlace(input.placeBFullName) } : {}),
     pairKey: pairKey(input.placeA, input.placeB),
     distanceKm: input.distanceKm,
     reimbursedKm: input.reimbursedKm,
@@ -110,6 +118,8 @@ export async function updateRoutePair(id: number, input: RoutePairInput) {
   const [updated] = await db.update(routePairs).set({
     placeA: normalizePlace(input.placeA),
     placeB: normalizePlace(input.placeB),
+    ...(input.placeAFullName !== undefined ? { placeAFullName: normalizePlace(input.placeAFullName) } : {}),
+    ...(input.placeBFullName !== undefined ? { placeBFullName: normalizePlace(input.placeBFullName) } : {}),
     pairKey: pairKey(input.placeA, input.placeB),
     distanceKm: input.distanceKm,
     reimbursedKm: input.reimbursedKm,
