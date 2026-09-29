@@ -32,7 +32,7 @@ jobs:
           echo "major_minor=${VERSION%.*}" >> "$GITHUB_OUTPUT"
 
       - name: Docker Buildx einrichten
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
       - name: Bei GHCR anmelden
         uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c # v4
