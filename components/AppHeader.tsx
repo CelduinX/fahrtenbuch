@@ -58,7 +58,7 @@ export function AppHeader() {
           </div>
         </div>
 
-        <div data-testid="desktop-app-bar" className="mx-auto hidden h-[72px] w-full max-w-[1380px] grid-cols-[minmax(150px,1fr)_auto_minmax(230px,1fr)] items-center gap-4 px-6 lg:grid xl:px-8">
+        <div data-testid="desktop-app-bar" className="app-frame hidden h-[72px] grid-cols-[minmax(150px,1fr)_auto_minmax(230px,1fr)] items-center gap-4 lg:grid">
           <Link href="/" className="focus-ring flex min-h-12 min-w-0 items-center gap-3 rounded-2xl pr-2" aria-label="Fahrtenbuch – Dashboard">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-[#dbe3ee]">
               <Image src="/brand/logo.png" alt="" width={40} height={40} className="h-full w-full object-contain" priority />

@@ -47,6 +47,9 @@ export const twoFactorLoginChallenges = sqliteTable("two_factor_login_challenges
 ]);
 
 export const appSettings = sqliteTable("app_settings", {
+  licensePlate: text("license_plate").notNull().default(""),
+  printColumns: text("print_columns"),
+  tripColumns: text("trip_columns"),
   id: integer("id").primaryKey(),
   defaultRemarkTemplateId: integer("default_remark_template_id"),
   reimbursementRateCents: integer("reimbursement_rate_cents").notNull().default(40),

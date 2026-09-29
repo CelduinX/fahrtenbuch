@@ -112,7 +112,7 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await expect(page.getByRole("combobox", { name: "Reiseweg" })).toBeFocused();
   await page.getByRole("combobox", { name: "Reiseweg" }).fill("bü");
   await page.getByRole("option", { name: /Büro.*Kunde/ }).click();
-  await expect(page.getByLabel("Datum")).toHaveValue(currentDate());
+  await expect(page.locator("#trip-date")).toHaveValue(currentDate());
   await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
 
   const alternateRouteResponse = await page.request.post("/api/routes", {
@@ -143,52 +143,52 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   await expect(page.getByRole("option", { name: "05", exact: true })).toBeVisible();
   await expect(page.getByRole("option", { name: "55", exact: true })).toBeVisible();
   await page.getByRole("option", { name: "00", exact: true }).click();
-  await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:00");
+  await expect(page.getByRole("textbox", { name: "Beginn", exact: true })).toHaveValue("08:00");
   await page.getByRole("combobox", { name: "Reiseweg" }).fill("ro");
   await expect(page.getByText("Kein passender Reiseweg gefunden.")).toBeVisible();
   await page.getByRole("combobox", { name: "Reiseweg" }).fill("BÜ");
   await page.getByRole("option", { name: /Büro.*Kunde/ }).click();
-  await expect(page.getByLabel("Ende", { exact: true })).toHaveValue("08:30");
-  await page.getByLabel("Ende", { exact: true }).fill("09:00");
-  await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:30");
+  await expect(page.getByRole("textbox", { name: "Ende", exact: true })).toHaveValue("08:30");
+  await page.getByRole("textbox", { name: "Ende", exact: true }).fill("09:00");
+  await expect(page.getByRole("textbox", { name: "Beginn", exact: true })).toHaveValue("08:30");
   await page.getByRole("combobox", { name: "Reiseweg" }).fill("ho");
   await expect(page.getByRole("option", { name: /Home.*Office/ })).toHaveCount(1);
   await page.getByRole("option", { name: /Home.*Office/ }).click();
-  await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:40");
+  await expect(page.getByRole("textbox", { name: "Beginn", exact: true })).toHaveValue("08:40");
   await page.getByRole("combobox", { name: "Reiseweg" }).fill("bü");
   await page.getByRole("option", { name: /Büro.*Kunde/ }).click();
-  await expect(page.getByLabel("Beginn", { exact: true })).toHaveValue("08:30");
-  await page.getByLabel("Beginn", { exact: true }).fill("08:00");
-  await expect(page.getByLabel("Ende", { exact: true })).toHaveValue("08:30");
-  await page.getByLabel("Datum").fill(`${currentMonth()}-05`);
-  await page.getByLabel("KM Beginn").fill("1000");
+  await expect(page.getByRole("textbox", { name: "Beginn", exact: true })).toHaveValue("08:30");
+  await page.getByRole("textbox", { name: "Beginn", exact: true }).fill("08:00");
+  await expect(page.getByRole("textbox", { name: "Ende", exact: true })).toHaveValue("08:30");
+  await page.locator("#trip-date").fill(`${currentMonth()}-05`);
+  await page.getByRole("dialog").getByLabel("KM Beginn").fill("1000");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByRole("cell", { name: "1.018" })).toBeVisible();
   await page.getByRole("button", { name: "Als übernommen markieren" }).click();
   await expect(page.getByRole("button", { name: "Als nicht übernommen markieren" })).toBeVisible();
   await expect(page.getByText("18 km").first()).toBeVisible();
-  await expect(page.locator("tbody").getByRole("cell", { name: "14 km", exact: true })).toBeVisible();
-  await expect(page.locator("tbody").getByRole("cell", { name: "4 km", exact: true })).toBeVisible();
+  await expect(page.locator("tbody").getByText("14 km", { exact: true })).toBeVisible();
+  await expect(page.locator("tbody").getByText("4 km", { exact: true })).toBeVisible();
   await expect(page.locator("tbody").getByText("7,00 €", { exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/dashboard.png", fullPage: true });
 
   await page.getByRole("button", { name: /Neue Fahrt/ }).click();
   await page.getByRole("combobox", { name: "Reiseweg" }).fill("kunde");
   await page.getByRole("option", { name: /Kunde.*Büro/ }).click();
-  await expect(page.getByLabel("Datum")).toHaveValue(currentDate());
+  await expect(page.locator("#trip-date")).toHaveValue(currentDate());
   await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
 
   await page.getByRole("cell", { name: "1.018" }).click();
-  await page.getByLabel("Ende", { exact: true }).fill("09:30");
+  await page.getByRole("textbox", { name: "Ende", exact: true }).fill("09:30");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByRole("cell", { name: "09:30", exact: true })).toBeVisible();
 
   await page.goto(`/print?month=${currentMonth()}`);
   await expect(page.getByRole("columnheader", { name: "KM abrechenbar", exact: true })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "KM nicht abrechenbar", exact: true })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Mögl. Erstattung", exact: true })).toBeVisible();
-  await expect(page.getByText("4 km", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("7,00 €", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "mögliche Erstattung", exact: true })).toBeVisible();
+  await expect(page.getByTestId("print-table-wrap").getByText("4 km", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("print-table-wrap").getByText("7,00 €", { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId("print-table-wrap").getByTestId("trip-place-note").first()).toContainText("Zentrale Hamburg");
   await page.screenshot({ path: "test-results/print.png", fullPage: true });
 
@@ -376,18 +376,16 @@ test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ 
     await routeDialog.getByRole("button", { name: "Schließen" }).click();
 
     await page.goto(`/print?month=${month}`);
-    await expect(page.getByTestId("print-mobile-cards")).toBeVisible();
-    await expect(page.getByTestId("print-mobile-cards").getByTestId("trip-place-note").last()).toContainText("Kundenstandort Berlin");
-    await expect(page.getByTestId("print-table-wrap")).toBeHidden();
+    await expect(page.getByTestId("print-table-wrap")).toBeVisible();
+    await expect(page.getByTestId("print-table-wrap").getByTestId("trip-place-note").last()).toContainText("Kundenstandort Berlin");
     await expectNoPageOverflow(page, `${label} populated print preview`);
     await page.goto("/print?month=2099-12");
-    await expect(page.getByTestId("print-mobile-cards")).toContainText("Für diesen Monat wurden keine Fahrten erfasst.");
+    await expect(page.getByTestId("print-table-wrap")).toContainText("Noch keine Fahrten in diesem Monat");
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/print?month=${month}`);
   await page.emulateMedia({ media: "print" });
-  await expect(page.getByTestId("print-mobile-cards")).toBeHidden();
   await expect(page.getByTestId("print-table-wrap")).toBeVisible();
   await page.emulateMedia({ media: "screen" });
 
@@ -426,14 +424,26 @@ test("Ausgeschriebene Orte erscheinen rueckwirkend mobil und im mehrseitigen Dru
   await expect(cards.nth(1).getByTestId("trip-place-note")).toHaveText(destinationFullName + " \u2192 " + originFullName);
   await expectNoPageOverflow(page, "long place names in mobile trips");
   await page.goto("/print?month=2035-02");
-  await expect(page.getByTestId("print-mobile-cards").getByTestId("trip-place-note")).toHaveCount(28);
+  await expect(page.getByTestId("print-table-wrap").getByTestId("trip-place-note")).toHaveCount(28);
   await expectNoPageOverflow(page, "long place names in mobile print");
   await page.emulateMedia({ media: "print" });
   const rows = page.getByTestId("print-table-wrap").locator("tbody tr");
   await expect(rows).toHaveCount(28);
   await expect(rows.first().getByTestId("trip-place-note")).toBeVisible();
   await expect(rows.first()).toHaveCSS("break-inside", "avoid");
+  await expect(page.getByTestId("print-table-wrap")).toHaveAttribute("data-ready", "true");
+  const sheets = page.locator(".print-pages .print-sheet");
+  const dimensions = await sheets.evaluateAll(elements => elements.map(element => {
+    const rect = element.getBoundingClientRect();
+    const content = element.querySelector(".print-page-content")!;
+    const footer = content.querySelector("footer")!;
+    const table = content.querySelector("table")!;
+    return { ratio: rect.width / rect.height, overflow: table.getBoundingClientRect().bottom > footer.getBoundingClientRect().top };
+  }));
+  expect(dimensions.length).toBeGreaterThan(1);
+  for (const sheet of dimensions) { expect(sheet.ratio).toBeCloseTo(297 / 210, 3); expect(sheet.overflow).toBe(false); }
   const pdf = await page.pdf({ format: "A4", preferCSSPageSize: true, path: "test-results/place-names-print.pdf" });
+  expect((pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? []).length).toBe(dimensions.length);
   expect((pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? []).length).toBeGreaterThan(1);
   await page.screenshot({ path: "test-results/place-names-print.png", fullPage: true });
 });

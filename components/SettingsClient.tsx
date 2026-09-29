@@ -1,4 +1,5 @@
 "use client";
+import { TRIP_CSV_HEADERS } from "@/lib/trip-csv";
 
 import {
   faArrowsLeftRight,
@@ -31,10 +32,12 @@ import type { BackupDto, BackupKind, ReimbursementSettingsDto, RoutePairDto, Tri
 import { RemarkSettingsCard } from "./RemarkSettingsCard";
 import type { RemarkSettingsDto } from "@/lib/types";
 import { Modal } from "./Modal";
+import { VehicleSettingsCard } from "./VehicleSettingsCard";
 
 export type SettingsTab = "remarks" | "routes" | "reimbursement" | "backups" | "transfer" | "credentials";
 
-export function SettingsClient({ initialRemarkSettings, initialRoutes, initialBackups, initialReimbursementSettings, initialTwoFactorStatus, initialTripDateRange, initialTab, username }: {
+export function SettingsClient({ initialVehicleSettings, initialRemarkSettings, initialRoutes, initialBackups, initialReimbursementSettings, initialTwoFactorStatus, initialTripDateRange, initialTab, username }: {
+  initialVehicleSettings: { licensePlate: string };
   initialRemarkSettings: RemarkSettingsDto;
   initialRoutes: RoutePairDto[];
   initialBackups: BackupDto[];
@@ -45,6 +48,7 @@ export function SettingsClient({ initialRemarkSettings, initialRoutes, initialBa
   username: string;
 }) {
   const [remarkSettings, setRemarkSettings] = useState(initialRemarkSettings);
+  const [vehicleSettings, setVehicleSettings] = useState(initialVehicleSettings);
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [routes, setRoutes] = useState(initialRoutes);
   const [backups, setBackups] = useState(initialBackups);
@@ -72,6 +76,8 @@ export function SettingsClient({ initialRemarkSettings, initialRoutes, initialBa
   }
 
   async function reloadAllData() {
+    const vehicleResponse = await fetch("/api/settings/vehicle");
+    if (vehicleResponse.ok) setVehicleSettings(await vehicleResponse.json());
     const [routesResponse, backupsResponse, reimbursementResponse, remarksResponse] = await Promise.all([
       fetch("/api/routes"),
       fetch("/api/backups"),
@@ -117,7 +123,8 @@ export function SettingsClient({ initialRemarkSettings, initialRoutes, initialBa
       <div key={activeTab} role="tabpanel" className="section-enter">
         {activeTab === "remarks" ? <RemarkSettingsCard settings={remarkSettings} onSaved={setRemarkSettings} /> : null}
         {activeTab === "routes" ? (
-          <RoutesCard routes={routes} onCreate={() => setRouteModal({ key: `new-${Date.now()}` })} onEdit={(route) => setRouteModal({ key: `edit-${route.id}`, route })} />
+          <><VehicleSettingsCard settings={vehicleSettings} onSaved={setVehicleSettings} />
+          <RoutesCard routes={routes} onCreate={() => setRouteModal({ key: `new-${Date.now()}` })} onEdit={(route) => setRouteModal({ key: `edit-${route.id}`, route })} /></>
         ) : null}
         {activeTab === "reimbursement" ? (
           <ReimbursementCard settings={reimbursementSettings} onSaved={setReimbursementSettings} />
@@ -364,8 +371,8 @@ function TransferCard({ initialDateRange, onImported }: {
         </header>
         <form onSubmit={importTrips} className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
           <div className="rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3 text-sm leading-6 text-[#1e40af]">
-            <strong>Erweiterte Kopfzeile:</strong>
-            <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white/80 px-3 py-2 text-xs">Datum;Beginn;Ende;Reiseweg;KM Beginn;KM Ende;Ort Start ausgeschrieben;Ort Ziel ausgeschrieben;Mitgenommene Bedienstete;Bemerkung</code>
+            <strong>Vollständige Kopfzeile:</strong><p>Der Export enthält unabhängig von der Spaltenauswahl alle Daten. Laufende Nummern werden beim Import chronologisch neu berechnet. Erstattung in Euro mit zwei Nachkommastellen, Erstattungssatz in Cent je Kilometer. Bisherige Formate mit 6 oder 10 Spalten bleiben importierbar.</p>
+            <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white/80 px-3 py-2 text-xs">{TRIP_CSV_HEADERS.join(";")}</code>
             <p className="mt-2">Das bisherige Format mit den ersten sechs Spalten wird ebenfalls unterstützt. Zusatzangaben bleiben dann leer.</p>
             <strong className="mt-3 block">Beispielzeile:</strong>
             <code className="mt-2 block overflow-x-auto whitespace-nowrap rounded-lg bg-white/80 px-3 py-2 text-xs">2026-07-28;08:00;09:30;HH → B;1000;1018;Hamburg;Berlin;Max Mustermann;Dienstbesprechung</code>

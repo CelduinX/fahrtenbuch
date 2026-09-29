@@ -135,7 +135,7 @@ Für öffentlichen Zugriff sollte ein Reverse Proxy mit HTTPS, beispielsweise Ca
 
 ## 🖥️ Unterstützte Systeme und Versionen
 
-Das Container-Image unterstützt `linux/amd64` und `linux/arm64`.
+Ab Version 1.0.9 wird das Container-Image ausschließlich für `linux/amd64` veröffentlicht.
 
 - `latest`: aktuellste stabile Version
 - Tags mit vollständiger Versionsnummer: exakt festgelegte Version

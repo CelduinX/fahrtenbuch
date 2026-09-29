@@ -1,3 +1,4 @@
+import { decodeTripColumns } from "./trip-columns";
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -124,7 +125,22 @@ export function restoreBackup(id: string) {
       && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "reimbursement_rate_cents");
     const hasDefaultRemark = backupTables.has("app_settings")
       && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "default_remark_template_id");
+    const hasTripColumns = backupTables.has("app_settings")
+      && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "trip_columns");
+    const restoredColumns = hasTripColumns
+      ? (backupColumns.prepare("SELECT trip_columns AS value FROM app_settings WHERE id = 1").get() as { value: string | null } | undefined)?.value
+      : null;
+    const hasPrintColumns = backupTables.has("app_settings")
+      && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "print_columns");
+    const restoredPrintColumns = hasPrintColumns
+      ? (backupColumns.prepare("SELECT print_columns AS value FROM app_settings WHERE id = 1").get() as { value: string | null } | undefined)?.value
+      : null;
     const hasRemarkTemplates = backupTables.has("remark_templates");
+    const hasLicensePlate = backupTables.has("app_settings")
+      && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "license_plate");
+    const restoredLicensePlate = hasLicensePlate
+      ? (backupColumns.prepare("SELECT license_plate AS value FROM app_settings WHERE id = 1").get() as { value: string } | undefined)?.value ?? ""
+      : "";
     const textColumns = ["origin_full_name_snapshot", "destination_full_name_snapshot", "accompanying_staff", "remark"];
     backupColumns.close();
     sqlite.prepare("ATTACH DATABASE ? AS restore_db").run(sourcePath);
@@ -163,6 +179,11 @@ export function restoreBackup(id: string) {
             WHERE id = 1 AND EXISTS (SELECT 1 FROM restore_db.app_settings WHERE id = 1);
           `);
         }
+        sqlite.prepare("UPDATE app_settings SET trip_columns = ?, updated_at = ? WHERE id = 1")
+          .run(JSON.stringify(decodeTripColumns(restoredColumns)), new Date().toISOString());
+        sqlite.prepare("UPDATE app_settings SET print_columns = ? WHERE id = 1")
+          .run(JSON.stringify(decodeTripColumns(restoredPrintColumns)));
+        sqlite.prepare("UPDATE app_settings SET license_plate = ? WHERE id = 1").run(restoredLicensePlate);
         const foreignKeyErrors = sqlite.pragma("foreign_key_check") as unknown[];
         if (foreignKeyErrors.length > 0) throw new Error("Die wiederhergestellten Daten enthalten ungültige Verknüpfungen.");
       });

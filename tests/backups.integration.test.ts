@@ -5,9 +5,10 @@ import Database from "better-sqlite3";
 import { createBackup, listBackups, restoreBackup } from "@/lib/backups";
 import { ensureDatabaseReady, sqlite } from "@/lib/db";
 import { createRoutePair, getActiveRoutePairs } from "@/lib/repositories/routes";
-import { getReimbursementSettings, updateReimbursementSettings } from "@/lib/repositories/settings";
+import { getPrintColumnSettings, updatePrintColumnSettings, getTripColumnSettings, updateTripColumnSettings, getReimbursementSettings, updateReimbursementSettings } from "@/lib/repositories/settings";
 import { createTrip, getTripsForMonth } from "@/lib/repositories/trips";
 import { getRemarkSettings, updateRemarkSettings } from "@/lib/repositories/remarks";
+import { getVehicleSettings, updateVehicleSettings } from "@/lib/repositories/settings";
 
 describe("SQLite-Sicherungen", () => {
   beforeAll(() => {
@@ -16,16 +17,25 @@ describe("SQLite-Sicherungen", () => {
   });
 
   it("erstellt eine Sicherung und stellt Fahrten sowie Reisewege wieder her", async () => {
+    await updateVehicleSettings("co-ab 123");
+    await updateTripColumnSettings(["sequenceNumber", "remark"]);
+    await updatePrintColumnSettings(["date", "distanceKm"]);
     await updateReimbursementSettings(55);
     const originalRoute = await createRoutePair({ placeAFullName: "Zentrale Hamburg", placeBFullName: "Kundenstandort Berlin", placeA: "Büro", placeB: "Kunde", distanceKm: 22, reimbursedKm: 17, durationMinutes: 25 });
     await createTrip({ date: "2026-07-10", startTime: "08:00", endTime: "09:00", odometerStart: 2000, routePairId: originalRoute.id, direction: "A_TO_B" });
     const backup = await createBackup("manual");
+    await updateVehicleSettings("CO-CD 456");
 
+    await updateTripColumnSettings(["date"]);
+    await updatePrintColumnSettings(["remark"]);
     await updateReimbursementSettings(60);
     const laterRoute = await createRoutePair({ placeA: "Büro", placeB: "Werkstatt", distanceKm: 7, reimbursedKm: 5, durationMinutes: 15 });
     await createTrip({ date: "2026-07-11", startTime: "10:00", endTime: "10:30", odometerStart: 2022, routePairId: laterRoute.id, direction: "A_TO_B" });
 
     const result = await restoreBackup(backup.id);
+    expect(await getVehicleSettings()).toEqual({ licensePlate: "CO-AB 123" });
+    expect(await getTripColumnSettings()).toEqual({ visibleColumns: ["sequenceNumber", "remark"] });
+    expect(await getPrintColumnSettings()).toEqual({ visibleColumns: ["date", "distanceKm"] });
     expect(result.routes).toBe(1);
     expect(result.trips).toBe(1);
     expect(await getActiveRoutePairs()).toEqual([expect.objectContaining({ placeA: "Büro", placeB: "Kunde", distanceKm: 22, reimbursedKm: 17 })]);
@@ -67,6 +77,7 @@ describe("SQLite-Sicherungen", () => {
     legacy.close();
 
     await restoreBackup(backupId);
+    expect(await getVehicleSettings()).toEqual({ licensePlate: "" });
     expect(await getActiveRoutePairs()).toEqual([expect.objectContaining({ distanceKm: 11, reimbursedKm: 11, unreimbursedKm: 0 })]);
     expect((await getTripsForMonth("2025-01")).trips).toEqual([expect.objectContaining({
       originFullName: "",
@@ -81,5 +92,7 @@ describe("SQLite-Sicherungen", () => {
     })]);
     expect(await getReimbursementSettings()).toEqual({ reimbursementRateCents: 55 });
     expect(getRemarkSettings()).toEqual({ templates: [], defaultTemplateId: null });
+    expect((await getTripColumnSettings()).visibleColumns).toHaveLength(13);
+    expect((await getPrintColumnSettings()).visibleColumns).toHaveLength(13);
   });
 });

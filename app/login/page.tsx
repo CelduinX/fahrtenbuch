@@ -9,7 +9,7 @@ export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
   const defaultCredentialsActive = await areDefaultCredentialsActive();
   return (
-    <main className="min-h-[calc(100dvh-60px)] bg-white lg:grid lg:grid-cols-[1.05fr_.95fr]">
+    <main className="w-full min-h-[calc(100dvh-60px)] bg-white lg:grid lg:grid-cols-[1.05fr_.95fr]">
       <section className="page-enter relative hidden min-h-[calc(100dvh-60px)] flex-col justify-between overflow-hidden bg-[#1e3a8a] p-14 text-white lg:flex">
         <Image src="/brand/bg-login-v2.png" alt="" fill sizes="55vw" className="object-cover" priority />
         <div className="relative flex items-center gap-3">

@@ -4,6 +4,7 @@ import { DefaultCredentialsNotice } from "@/components/DefaultCredentialsNotice"
 import { requirePageUser } from "@/lib/auth";
 import { currentDate, currentMonth, validMonthOrCurrent } from "@/lib/dates";
 import { getActiveRoutePairs, toRouteOptions } from "@/lib/repositories/routes";
+import { getTripColumnSettings } from "@/lib/repositories/settings";
 import { getTripsForMonth } from "@/lib/repositories/trips";
 
 export const dynamic = "force-dynamic";
@@ -13,17 +14,18 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
   const todayDate = currentDate();
   const todayMonth = currentMonth();
   const month = validMonthOrCurrent(params.month);
-  const [pairs, monthData] = await Promise.all([
+  const [pairs, monthData, columnSettings] = await Promise.all([
     getActiveRoutePairs(),
     getTripsForMonth(month),
+    getTripColumnSettings(),
   ]);
 
   return (
     <>
       <AppHeader />
-      <main className="app-content page-enter mx-auto w-full max-w-[1380px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+      <main className="app-frame app-content page-enter py-5 lg:py-6">
         {user.usesDefaultCredentials ? <DefaultCredentialsNotice /> : null}
-        <DashboardClient initialMonth={month} todayMonth={todayMonth} todayDate={todayDate} initialData={monthData} routeOptions={toRouteOptions(pairs)} />
+        <DashboardClient initialVisibleColumns={columnSettings.visibleColumns} initialMonth={month} todayMonth={todayMonth} todayDate={todayDate} initialData={monthData} routeOptions={toRouteOptions(pairs)} />
       </main>
     </>
   );

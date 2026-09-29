@@ -24,6 +24,10 @@ export function tripToDto(row: typeof trips.$inferSelect): TripDto {
     destinationFullName: row.routePairId === null ? row.destinationFullNameSnapshot : matches(row.destinationSnapshot, destination) ? (row.direction === "A_TO_B" ? pair!.placeBFullName : pair!.placeAFullName) : "",
     accompanyingStaff: row.accompanyingStaff,
     remark: row.remark,
+    sequenceNumber: (sqlite.prepare(`SELECT COUNT(*) + 1 AS number FROM trips
+      WHERE date < ? OR (date = ? AND start_time < ?)
+      OR (date = ? AND start_time = ? AND id < ?)`)
+      .get(row.date, row.date, row.startTime, row.date, row.startTime, row.id) as { number: number }).number,
     id: row.id,
     date: row.date,
     startTime: row.startTime,
@@ -151,7 +155,7 @@ export async function importTripsFromCsv(rows: TripCsvRow[]): Promise<TripCsvImp
       reimbursed_km_snapshot, reimbursement_rate_cents_snapshot,
       odometer_start, is_checked, created_at, updated_at,
       origin_full_name_snapshot, destination_full_name_snapshot, accompanying_staff, remark
-    ) VALUES (?, ?, ?, NULL, NULL, ?, '', ?, ?, 40, ?, 0, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, NULL, NULL, ?, '', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
   `);
   sqlite.transaction(() => {
     for (const row of pending) {
@@ -162,7 +166,8 @@ export async function importTripsFromCsv(rows: TripCsvRow[]): Promise<TripCsvImp
         row.endTime,
         row.routeLabel,
         distanceKm,
-        distanceKm,
+        row.reimbursedKm ?? distanceKm,
+        row.reimbursementRateCents ?? 40,
         row.odometerStart,
         now,
         now,

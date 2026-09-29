@@ -1,11 +1,12 @@
 "use client";
-import { TripPlaceNote } from "@/components/TripPlaceNote";
+import { TripFields, TripSummary, TripTable } from "./TripData";
+import { ALL_TRIP_COLUMN_IDS, TRIP_COLUMNS, type TripColumnId } from "@/lib/trip-columns";
 
 
-import { faCheck, faChevronLeft, faChevronRight, faPlus, faPrint } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faChevronDown, faChevronLeft, faChevronRight, faPlus, faPrint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useState, useTransition } from "react";
-import { formatEuro } from "@/lib/money";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { MonthDataDto, RouteOptionDto, TripDto } from "@/lib/types";
 import { TripModal } from "./TripModal";
 
@@ -20,18 +21,55 @@ function shiftMonth(month: string, delta: number) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function formatDate(date: string) {
-  const [year, month, day] = date.split("-");
-  return `${day}.${month}.${year}`;
-}
-
-export function DashboardClient({ initialMonth, todayMonth, todayDate, initialData, routeOptions }: {
+export function DashboardClient({ initialMonth, todayMonth, todayDate, initialData, routeOptions, initialVisibleColumns }: {
+  initialVisibleColumns: TripColumnId[];
   initialMonth: string;
   todayMonth: string;
   todayDate: string;
   initialData: MonthDataDto;
   routeOptions: RouteOptionDto[];
 }) {
+  const router = useRouter();
+  const [visibleColumns, setVisibleColumns] = useState(initialVisibleColumns);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const columnsDropdownRef = useRef<HTMLDivElement>(null);
+  const columnsButtonRef = useRef<HTMLButtonElement>(null);
+  const [savingColumns, setSavingColumns] = useState(false);
+  useEffect(() => {
+    if (!columnsOpen) return;
+    function closeOutside(event: Event) {
+      if (event.target instanceof Node && !columnsDropdownRef.current?.contains(event.target)) setColumnsOpen(false);
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("focusin", closeOutside);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("focusin", closeOutside);
+    };
+  }, [columnsOpen]);
+  useEffect(() => {
+    async function refreshColumns() {
+      try {
+        const response = await fetch("/api/settings/trip-columns", { cache: "no-store" });
+        if (response.ok) setVisibleColumns((await response.json()).visibleColumns);
+      } catch { /* Keep the last successfully loaded selection. */ }
+    }
+    window.addEventListener("focus", refreshColumns);
+    return () => window.removeEventListener("focus", refreshColumns);
+  }, []);
+  async function saveColumns(columns: TripColumnId[]) {
+    const previousColumns = visibleColumns;
+    setVisibleColumns(columns);
+    setSavingColumns(true);
+    setError("");
+    try {
+      const response = await fetch("/api/settings/trip-columns", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ visibleColumns: columns }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Spalten konnten nicht gespeichert werden.");
+      setVisibleColumns(result.visibleColumns);
+    } catch (error) { setVisibleColumns(previousColumns); setError(error instanceof Error ? error.message : "Spalten konnten nicht gespeichert werden."); }
+    finally { setSavingColumns(false); }
+  }
   const [month, setMonth] = useState(initialMonth);
   const [data, setData] = useState(initialData);
   const [availableRouteOptions, setAvailableRouteOptions] = useState(routeOptions);
@@ -43,7 +81,7 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
   async function loadMonth(nextMonth: string) {
     const response = await fetch(`/api/trips?month=${encodeURIComponent(nextMonth)}`);
     if (response.status === 401) {
-      window.location.href = "/login";
+      router.replace("/login");
       return;
     }
     const result = await response.json();
@@ -108,7 +146,7 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
         </div>
       </div>
 
-      <div className="section-enter mb-4 flex flex-col gap-3 rounded-2xl border border-[#dbe3ee] bg-white p-2.5 shadow-[0_2px_12px_rgba(15,23,42,.035)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="section-enter relative z-40 mb-4 flex flex-col gap-3 rounded-2xl border border-[#dbe3ee] bg-white p-2.5 shadow-[0_2px_12px_rgba(15,23,42,.035)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1">
           <button className="btn-ghost focus-ring h-11 w-11 p-0 text-xl lg:h-10 lg:w-10" type="button" aria-label="Vorheriger Monat" onClick={() => navigate(shiftMonth(month, -1))}><FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" /></button>
           <button className="btn-ghost focus-ring h-11 w-11 p-0 text-xl lg:h-10 lg:w-10" type="button" aria-label="Nächster Monat" onClick={() => navigate(shiftMonth(month, 1))}><FontAwesomeIcon icon={faChevronRight} className="h-4 w-4" /></button>
@@ -118,9 +156,26 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
           {isPending ? <span className="text-sm text-[#64748b]">Wird geladen …</span> : null}
           <label className="shrink-0 text-sm font-semibold text-[#475569]" htmlFor="month-picker">Monat</label>
           <input id="month-picker" className="field min-w-0 flex-1 py-2 sm:!w-[175px] sm:flex-none" type="month" value={month} onChange={(event) => navigate(event.target.value)} />
+          <div ref={columnsDropdownRef} className="relative shrink-0" onKeyDown={(event) => {
+            if (event.key === "Escape" && columnsOpen) {
+              event.preventDefault();
+              setColumnsOpen(false);
+              columnsButtonRef.current?.focus();
+            }
+          }}>
+            <button ref={columnsButtonRef} type="button" className="btn-secondary focus-ring" aria-expanded={columnsOpen} aria-controls="trip-columns-dropdown" onClick={() => setColumnsOpen((open) => !open)}>
+              Spalten <FontAwesomeIcon icon={faChevronDown} className={`h-3 w-3 transition-transform ${columnsOpen ? "rotate-180" : ""}`} />
+            </button>
+            {columnsOpen ? <div id="trip-columns-dropdown" className="popover-enter absolute right-0 top-full z-30 mt-2 max-h-[70vh] w-[310px] max-w-[calc(100vw-48px)] overflow-y-auto rounded-xl border border-[#dbe3ee] bg-white p-3 shadow-[0_12px_35px_rgba(15,23,42,.14)]">
+              <fieldset disabled={savingColumns}>
+                <legend className="sr-only">Sichtbare Spalten</legend>
+                {TRIP_COLUMNS.map((column) => <label key={column.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1 text-sm hover:bg-[#f8fafc]"><input type="checkbox" className="focus-ring h-4 w-4 shrink-0 accent-[#2563eb]" checked={visibleColumns.includes(column.id)} disabled={visibleColumns.length === 1 && visibleColumns.includes(column.id)} onChange={(event) => void saveColumns(event.target.checked ? [...visibleColumns, column.id] : visibleColumns.filter((id) => id !== column.id))} />{column.label}</label>)}
+                <button type="button" className="btn-secondary focus-ring mt-2 w-full" onClick={() => void saveColumns([...ALL_TRIP_COLUMN_IDS])}>Alle anzeigen</button>
+              </fieldset>
+            </div> : null}
+          </div>
         </div>
       </div>
-
       {error ? <p className="status-enter mb-4 rounded-xl border border-[#f1d2cf] bg-[#fff4f3] px-4 py-3 text-sm text-[#a33c36]">{error}</p> : null}
 
       {routeOptions.length === 0 ? (
@@ -130,108 +185,15 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
         </div>
       ) : null}
 
-      <div key={`desktop-${month}`} className={`section-enter hidden overflow-x-auto rounded-[20px] border border-[#dbe3ee] bg-white shadow-[0_8px_28px_rgba(15,23,42,.055)] transition-opacity lg:block ${isPending ? "opacity-65" : ""}`}>
-        <table className="w-full min-w-[1650px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-[#dbe3ee] bg-[#f8fafc] text-[11px] font-extrabold uppercase tracking-[.09em] text-[#64748b]">
-              <th className="px-3 py-4 text-center">Übernommen</th>
-              <th className="px-5 py-4">Datum</th>
-              <th className="px-4 py-4">Beginn</th>
-              <th className="px-4 py-4">Ende</th>
-              <th className="px-4 py-4">Reiseweg</th>
-              <th className="px-4 py-4">Mitgenommene Bedienstete</th>
-              <th className="px-4 py-4">Bemerkung</th>
-              <th className="px-4 py-4 text-right">KM Beginn</th>
-              <th className="px-4 py-4 text-right">KM Ende</th>
-              <th className="px-5 py-4 text-right">KM gesamt</th>
-              <th className="px-4 py-4 text-right">KM abrechenbar</th>
-              <th className="px-5 py-4 text-right">KM nicht abrechenbar</th>
-              <th className="px-5 py-4 text-right">Mögl. Erstattung</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.trips.length === 0 ? (
-              <tr>
-                <td colSpan={13} className="px-6 py-20 text-center">
-                  <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[#eff6ff] text-2xl text-[#3b5f88]">↗</div>
-                  <p className="font-extrabold text-[#334155]">Noch keine Fahrten in diesem Monat</p>
-                  <p className="mt-1 text-sm text-[#64748b]">Mit „Neue Fahrt“ erstellst du den ersten Eintrag.</p>
-                </td>
-              </tr>
-            ) : data.trips.map((trip) => (
-              <tr key={trip.id} className={`group cursor-pointer border-b border-[#edf1f7] text-sm transition-colors last:border-0 hover:bg-[#f8fafc] ${trip.isChecked ? "bg-[#f0fdf4]" : ""}`} onClick={() => setModal({ key: `edit-${trip.id}`, trip })}>
-                <td className="px-3 py-[17px] text-center"><button type="button" className={`focus-ring grid h-8 w-8 place-items-center rounded-lg border ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-transparent hover:border-[#60a5fa]"}`} aria-label={trip.isChecked ? "Als nicht übernommen markieren" : "Als übernommen markieren"} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={(event) => { event.stopPropagation(); void toggleChecked(trip); }}><FontAwesomeIcon icon={faCheck} className="h-5 w-5" /></button></td>
-                <td className="px-5 py-[17px] font-bold text-[#334155]">{formatDate(trip.date)}</td>
-                <td className="px-4 py-[17px] tabular-nums text-[#475569]">{trip.startTime}</td>
-                <td className="px-4 py-[17px] tabular-nums text-[#475569]">{trip.endTime}</td>
-                <td className="px-4 py-[17px] font-semibold">{trip.routeLabel}<TripPlaceNote originFullName={trip.originFullName} destinationFullName={trip.destinationFullName} /></td>
-                <td className="px-4 py-[17px] max-w-[220px] whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.accompanyingStaff || "–"}</td>
-                <td className="px-4 py-[17px] max-w-[260px] whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.remark || "–"}</td>
-                <td className="px-4 py-[17px] text-right tabular-nums text-[#475569]">{trip.odometerStart.toLocaleString("de-DE")}</td>
-                <td className="px-4 py-[17px] text-right tabular-nums text-[#475569]">{trip.odometerEnd.toLocaleString("de-DE")}</td>
-                <td className="px-5 py-[17px] text-right"><span className="inline-flex min-w-16 justify-center rounded-lg bg-[#eff6ff] px-2.5 py-1 font-extrabold tabular-nums text-[#2563eb]">{trip.distanceKm} km</span></td>
-                <td className="px-4 py-[17px] text-right font-bold tabular-nums text-[#475569]">{trip.reimbursedKm} km</td>
-                <td className="px-5 py-[17px] text-right font-extrabold tabular-nums text-[#a16207]">{trip.unreimbursedKm} km</td>
-                <td className="px-5 py-[17px] text-right">
-                  <span className="block font-extrabold tabular-nums text-[#15803d]">{formatEuro(trip.potentialReimbursementCents)}</span>
-                  <span className="block text-[10px] tabular-nums text-[#64748b]">{formatEuro(trip.reimbursementRateCents)}/km</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-[#dbe3ee] bg-[#f8fafc]">
-              <td colSpan={9} className="px-5 py-4 text-right text-xs font-extrabold uppercase tracking-[.1em] text-[#64748b]">Gesamt im Monat</td>
-              <td className="px-5 py-4 text-right text-base font-extrabold tabular-nums text-[#2563eb]">{data.totalKm.toLocaleString("de-DE")} km</td>
-              <td className="px-4 py-4 text-right text-base font-extrabold tabular-nums text-[#475569]">{data.totalReimbursedKm.toLocaleString("de-DE")} km</td>
-              <td className="px-5 py-4 text-right text-base font-extrabold tabular-nums text-[#a16207]">{data.totalUnreimbursedKm.toLocaleString("de-DE")} km</td>
-              <td className="px-5 py-4 text-right text-base font-extrabold tabular-nums text-[#15803d]">{formatEuro(data.totalPotentialReimbursementCents)}</td>
-            </tr>
-          </tfoot>
-        </table>
+      <div key={`desktop-${month}`} className={`section-enter hidden overflow-x-auto rounded-[20px] border border-[#dbe3ee] bg-white lg:block ${isPending ? "opacity-65" : ""}`}>
+        <TripTable data={data} visibleColumns={visibleColumns} onEdit={(trip) => setModal({ key: `edit-${trip.id}`, trip })} action={(trip) => <button type="button" className={`focus-ring mx-auto grid h-7 w-7 place-items-center rounded-lg border ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-[#64748b]"}`} aria-label={trip.isChecked ? "Als nicht übernommen markieren" : "Als übernommen markieren"} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}><FontAwesomeIcon icon={faCheck} className={`h-4 w-4 ${trip.isChecked ? "" : "opacity-20"}`} /></button>} />
       </div>
-
-      <div key={`mobile-${month}`} className={`stagger-enter space-y-3 transition-opacity lg:hidden ${isPending ? "opacity-65" : ""}`}>
-        {data.trips.length === 0 ? (
-          <div className="rounded-[20px] border border-[#dbe3ee] bg-white px-5 py-14 text-center shadow-[0_8px_28px_rgba(15,23,42,.055)]">
-            <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[#eff6ff] text-2xl text-[#3b5f88]">↗</div>
-            <p className="font-extrabold text-[#334155]">Noch keine Fahrten in diesem Monat</p>
-            <p className="mt-1 text-sm text-[#64748b]">Mit „Neue Fahrt“ erstellst du den ersten Eintrag.</p>
-          </div>
-        ) : data.trips.map((trip) => (
-          <article key={trip.id} data-testid="mobile-trip-card" className={`soft-card rounded-[18px] border p-4 shadow-[0_5px_18px_rgba(15,23,42,.05)] transition-colors ${trip.isChecked ? "border-[#bbf7d0] bg-[#f0fdf4]" : "border-[#dbe3ee] bg-white"}`}>
-          <button type="button" className="focus-ring w-full text-left" onClick={() => setModal({ key: `edit-${trip.id}`, trip })}>
-            <span className="mb-3 flex items-start justify-between gap-3">
-              <span><span className="block text-xs font-bold uppercase tracking-[.08em] text-[#64748b]">{formatDate(trip.date)}</span><span className="mt-1 block font-extrabold text-[#273449]">{trip.routeLabel}</span><TripPlaceNote originFullName={trip.originFullName} destinationFullName={trip.destinationFullName} /></span>
-              <span className="shrink-0 rounded-lg bg-[#eff6ff] px-2.5 py-1 text-sm font-extrabold text-[#2563eb]">{trip.distanceKm} km</span>
-            </span>
-            <span className="grid grid-cols-2 gap-3 border-t border-[#edf1f7] pt-3 text-sm">
-              <span><span className="block text-[10px] font-bold uppercase tracking-[.08em] text-[#64748b]">Uhrzeit</span><span className="mt-0.5 block font-semibold tabular-nums">{trip.startTime} – {trip.endTime}</span></span>
-              <span className="text-right"><span className="block text-[10px] font-bold uppercase tracking-[.08em] text-[#64748b]">Kilometerstand</span><span className="mt-0.5 block font-semibold tabular-nums">{trip.odometerStart.toLocaleString("de-DE")} → {trip.odometerEnd.toLocaleString("de-DE")}</span></span>
-            </span>
-            <span className="mt-3 grid grid-cols-2 gap-3 border-t border-[#edf1f7] pt-3 text-sm">
-              <span><span className="block text-[10px] font-bold uppercase tracking-[.08em] text-[#64748b]">KM abrechenbar</span><span className="mt-0.5 block font-extrabold tabular-nums">{trip.reimbursedKm} km</span></span>
-              <span className="text-right"><span className="block text-[10px] font-bold uppercase tracking-[.08em] text-[#64748b]">KM nicht abrechenbar</span><span className="mt-0.5 block font-extrabold tabular-nums text-[#a16207]">{trip.unreimbursedKm} km</span></span>
-            </span>
-            <span className="mt-3 flex items-end justify-between gap-3 rounded-xl bg-[#f0fdf4] px-3 py-2.5 text-sm">
-              <span><span className="block text-[10px] font-bold uppercase tracking-[.08em] text-[#64748b]">Mögliche Erstattung</span><span className="mt-0.5 block text-[10px] tabular-nums text-[#64748b]">{formatEuro(trip.reimbursementRateCents)} je abrechenbarem km</span></span>
-              <span className="font-extrabold tabular-nums text-[#15803d]">{formatEuro(trip.potentialReimbursementCents)}</span>
-            </span>
-            <span className="mt-3 block min-w-0 border-t border-[#edf1f7] pt-3 text-sm"><span className="block text-[10px] font-bold uppercase text-[#64748b]">Mitgenommene Bedienstete</span><span className="mt-1 block whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.accompanyingStaff || "–"}</span></span>
-            <span className="mt-3 block min-w-0 text-sm"><span className="block text-[10px] font-bold uppercase text-[#64748b]">Bemerkung</span><span className="mt-1 block whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{trip.remark || "–"}</span></span>
-          </button>
-          <button type="button" className={`focus-ring mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-[#475569]"}`} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}>{trip.isChecked ? "✓ Ins analoge Fahrtenbuch übernommen" : "Als übernommen markieren"}</button>
-          </article>
-        ))}
-        <div className="rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3">
-          <span className="block text-xs font-extrabold uppercase tracking-[.08em] text-[#475569]">Gesamt im Monat</span>
-          <span className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-            <span><span className="block text-[9px] font-bold uppercase text-[#64748b]">KM gesamt</span><span className="font-extrabold tabular-nums text-[#2563eb]">{data.totalKm.toLocaleString("de-DE")} km</span></span>
-            <span className="text-right sm:text-center"><span className="block text-[9px] font-bold uppercase text-[#64748b]">KM abrechenbar</span><span className="font-extrabold tabular-nums">{data.totalReimbursedKm.toLocaleString("de-DE")} km</span></span>
-            <span><span className="block text-[9px] font-bold uppercase text-[#64748b]">KM nicht abrechenbar</span><span className="font-extrabold tabular-nums text-[#a16207]">{data.totalUnreimbursedKm.toLocaleString("de-DE")} km</span></span>
-            <span className="text-right"><span className="block text-[9px] font-bold uppercase text-[#64748b]">Mögl. Erstattung</span><span className="font-extrabold tabular-nums text-[#15803d]">{formatEuro(data.totalPotentialReimbursementCents)}</span></span>
-          </span>
-        </div>
+      <div key={`mobile-${month}`} className={`space-y-3 lg:hidden ${isPending ? "opacity-65" : ""}`}>
+        {data.trips.length ? data.trips.map((trip) => <article key={trip.id} data-testid="mobile-trip-card" className={`rounded-2xl border p-4 ${trip.isChecked ? "border-[#bbf7d0] bg-[#f0fdf4]" : "border-[#dbe3ee] bg-white"}`}>
+          <button type="button" className="focus-ring w-full text-left" aria-label={`Fahrt ${trip.sequenceNumber} bearbeiten`} onClick={() => setModal({ key: `edit-${trip.id}`, trip })}><TripFields trip={trip} visibleColumns={visibleColumns} /></button>
+          <button type="button" className="btn-secondary focus-ring mt-3 w-full" aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}>{trip.isChecked ? "✓ Ins analoge Fahrtenbuch übernommen" : "Als übernommen markieren"}</button>
+        </article>) : <div className="rounded-2xl bg-white p-10 text-center">Noch keine Fahrten in diesem Monat</div>}
+        <TripSummary data={data} visibleColumns={visibleColumns} />
       </div>
 
       <p className="mt-3 text-right text-xs text-[#64748b]">{data.trips.length} {data.trips.length === 1 ? "Fahrt" : "Fahrten"}</p>

@@ -4,7 +4,7 @@ import { createBackup, restoreBackup } from "@/lib/backups";
 import { getRemarkSettings, updateRemarkSettings } from "@/lib/repositories/remarks";
 import { createRoutePair, updateRoutePair } from "@/lib/repositories/routes";
 import { createTrip, deleteTrip, getTripsForMonth, importTripsFromCsv, updateTrip } from "@/lib/repositories/trips";
-import { parseTripCsv, serializeTripCsv, TRIP_CSV_HEADERS } from "@/lib/trip-csv";
+import { parseTripCsv, serializeTripCsv, EXTENDED_TRIP_CSV_HEADERS } from "@/lib/trip-csv";
 import { createTripSchema, remarkSettingsSchema } from "@/lib/validation";
 
 describe("Fahrttexte und Bemerkungsvorlagen", () => {
@@ -74,7 +74,7 @@ describe("Fahrttexte und Bemerkungsvorlagen", () => {
     expect(remarkSettingsSchema.safeParse({ templates: [], defaultTemplateIndex: 0 }).success).toBe(false);
     expect(() => updateRemarkSettings({ templates: [{ id: 999999, text: "Unbekannt" }], defaultTemplateIndex: null })).toThrow(/Ungültige/);
     expect(createTripSchema.safeParse({ date: "2036-01-01", startTime: "08:00", endTime: "08:20", odometerStart: 1, routePairId: 1, direction: "A_TO_B", remark: "x".repeat(2001) }).success).toBe(false);
-    const csv = TRIP_CSV_HEADERS.join(";") + "\n2036-01-01;08:00;08:20;Test;1;2;;;" + "x".repeat(2001) + ";";
+    const csv = EXTENDED_TRIP_CSV_HEADERS.join(";") + "\n2036-01-01;08:00;08:20;Test;1;2;;;" + "x".repeat(2001) + ";";
     expect(() => parseTripCsv(csv)).toThrow(/Textlänge/);
   });
 });
