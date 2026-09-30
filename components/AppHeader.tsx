@@ -69,7 +69,7 @@ export function AppHeader() {
             </span>
           </Link>
 
-          <nav className="flex items-center gap-1.5" aria-label="Hauptnavigation">
+          <nav className="flex h-full items-center gap-1" aria-label="Hauptnavigation">
             {navigationItems.map((item) => {
               const active = pathname === item.href;
               return (
@@ -77,15 +77,14 @@ export function AppHeader() {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`focus-ring relative inline-flex min-h-12 items-center gap-2 rounded-full px-3.5 text-[14px] font-bold transition-[background-color,color,transform] active:scale-[.98] ${active ? "bg-[#e0ecff] text-[#1d4ed8]" : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#172033]"}`}
+                  className={`focus-ring relative inline-flex h-full items-center gap-2 border-b-[3px] px-4 pt-[3px] text-[14px] font-bold transition-colors ${active ? "border-[#2563eb] text-[#1d4ed8]" : "border-transparent text-[#475569] hover:border-[#bfdbfe] hover:text-[#172033]"}`}
                 >
                   <FontAwesomeIcon icon={item.icon} className="h-[18px] w-[18px]" />
                   <span>{item.label}</span>
-                  {active ? <span aria-hidden="true" className="absolute inset-x-5 -bottom-[5px] h-0.5 rounded-full bg-[#2563eb]" /> : null}
                 </Link>
               );
             })}
-            <Link href="/?addTrip=1" className="btn-primary focus-ring ml-1 min-h-12 gap-2 rounded-full px-4 text-[14px]">
+            <Link href="/?addTrip=1" className="btn-primary focus-ring ml-3 min-h-11 gap-2 rounded-lg px-4 text-[14px] shadow-sm">
               <FontAwesomeIcon icon={faPlus} className="h-[18px] w-[18px]" />
               Fahrt hinzufügen
             </Link>
@@ -94,7 +93,7 @@ export function AppHeader() {
           <div className="flex items-center justify-end gap-2">
             <Link
               href="/settings"
-              className={`focus-ring grid h-12 w-12 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] active:scale-95 ${pathname === "/settings" ? "bg-[#e0ecff] text-[#1d4ed8]" : "text-[#475569] hover:bg-[#eff6ff] hover:text-[#2563eb]"}`}
+              className={`focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-colors ${pathname === "/settings" ? "bg-[#eff6ff] text-[#1d4ed8]" : "text-[#475569] hover:bg-[#eff6ff] hover:text-[#2563eb]"}`}
               aria-label="Einstellungen"
               aria-current={pathname === "/settings" ? "page" : undefined}
               title="Einstellungen"
@@ -102,7 +101,7 @@ export function AppHeader() {
               <FontAwesomeIcon icon={faGear} className="h-5 w-5" />
             </Link>
             <button
-              className="focus-ring grid h-12 w-12 shrink-0 place-items-center rounded-full text-[#475569] transition-[background-color,color,transform] hover:bg-[#eff6ff] hover:text-[#2563eb] active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
+              className="focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[#475569] transition-colors hover:bg-[#eff6ff] hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-55"
               type="button"
               onClick={logout}
               disabled={isPending}

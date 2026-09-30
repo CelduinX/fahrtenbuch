@@ -1,14 +1,15 @@
 "use client";
 import { TripFields, TripSummary, TripTable } from "./TripData";
-import { ALL_TRIP_COLUMN_IDS, TRIP_COLUMNS, type TripColumnId } from "@/lib/trip-columns";
+import { ALL_TRIP_COLUMN_IDS, TRIP_COLUMNS, screenTripColumnLayout, type TripColumnId } from "@/lib/trip-columns";
 
 
 import { faCheck, faChevronDown, faChevronLeft, faChevronRight, faPlus, faPrint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import type { MonthDataDto, RouteOptionDto, TripDto } from "@/lib/types";
 import { TripModal } from "./TripModal";
+import { MonthPicker } from "./MonthPicker";
 
 function monthTitle(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
@@ -20,6 +21,8 @@ function shiftMonth(month: string, delta: number) {
   const value = new Date(year, monthNumber - 1 + delta, 1);
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
+
+const numericColumns = new Set<TripColumnId>(["odometerStart", "odometerEnd", "distanceKm", "reimbursedKm", "unreimbursedKm", "potentialReimbursementCents"]);
 
 export function DashboardClient({ initialMonth, todayMonth, todayDate, initialData, routeOptions, initialVisibleColumns }: {
   initialVisibleColumns: TripColumnId[];
@@ -77,6 +80,47 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
   const [error, setError] = useState("");
   const [checkingTripId, setCheckingTripId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
+  const desktopTableRef = useRef<HTMLDivElement>(null);
+  const desktopScrollRef = useRef<HTMLDivElement>(null);
+  const [tableViewportWidth, setTableViewportWidth] = useState<number>();
+  const [tableScrollLeft, setTableScrollLeft] = useState(0);
+  const [stickyHeaderVisible, setStickyHeaderVisible] = useState(false);
+
+  useLayoutEffect(() => {
+    const tableArea = desktopTableRef.current;
+    const scrollArea = desktopScrollRef.current;
+    const header = scrollArea?.querySelector("thead");
+    if (!tableArea || !scrollArea || !header) return;
+    function updateSticky() {
+      const headerRect = header!.getBoundingClientRect();
+      const areaRect = tableArea!.getBoundingClientRect();
+      setStickyHeaderVisible(headerRect.bottom <= 0 && areaRect.bottom > headerRect.height);
+    }
+    function updateWidth() {
+      setTableViewportWidth(scrollArea!.clientWidth);
+      updateSticky();
+    }
+    function updateScroll() {
+      setTableScrollLeft(scrollArea!.scrollLeft);
+      updateSticky();
+    }
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(scrollArea);
+    updateWidth();
+    updateScroll();
+    scrollArea.addEventListener("scroll", updateScroll, { passive: true });
+    window.addEventListener("scroll", updateSticky, { passive: true });
+    window.addEventListener("resize", updateSticky);
+    return () => {
+      observer.disconnect();
+      scrollArea.removeEventListener("scroll", updateScroll);
+      window.removeEventListener("scroll", updateSticky);
+      window.removeEventListener("resize", updateSticky);
+    };
+  }, [month, visibleColumns, data.trips.length]);
+
+  const screenColumns = TRIP_COLUMNS.filter((column) => visibleColumns.includes(column.id));
+  const screenLayout = screenTripColumnLayout(visibleColumns, tableViewportWidth, true);
 
   async function loadMonth(nextMonth: string) {
     const response = await fetch(`/api/trips?month=${encodeURIComponent(nextMonth)}`);
@@ -152,10 +196,10 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
           <button className="btn-ghost focus-ring h-11 w-11 p-0 text-xl lg:h-10 lg:w-10" type="button" aria-label="Nächster Monat" onClick={() => navigate(shiftMonth(month, 1))}><FontAwesomeIcon icon={faChevronRight} className="h-4 w-4" /></button>
           <button className="btn-secondary focus-ring ml-1" type="button" onClick={() => navigate(todayMonth)}>Heute</button>
         </div>
-        <div className="flex w-full items-center gap-3 sm:w-auto">
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
           {isPending ? <span className="text-sm text-[#64748b]">Wird geladen …</span> : null}
-          <label className="shrink-0 text-sm font-semibold text-[#475569]" htmlFor="month-picker">Monat</label>
-          <input id="month-picker" className="field min-w-0 flex-1 py-2 sm:!w-[175px] sm:flex-none" type="month" value={month} onChange={(event) => navigate(event.target.value)} />
+          <span className="hidden shrink-0 text-sm font-semibold text-[#475569] sm:inline">Monat</span>
+          <MonthPicker value={month} onChange={navigate} />
           <div ref={columnsDropdownRef} className="relative shrink-0" onKeyDown={(event) => {
             if (event.key === "Escape" && columnsOpen) {
               event.preventDefault();
@@ -185,8 +229,18 @@ export function DashboardClient({ initialMonth, todayMonth, todayDate, initialDa
         </div>
       ) : null}
 
-      <div key={`desktop-${month}`} className={`section-enter hidden overflow-x-auto rounded-[20px] border border-[#dbe3ee] bg-white lg:block ${isPending ? "opacity-65" : ""}`}>
-        <TripTable data={data} visibleColumns={visibleColumns} onEdit={(trip) => setModal({ key: `edit-${trip.id}`, trip })} action={(trip) => <button type="button" className={`focus-ring mx-auto grid h-7 w-7 place-items-center rounded-lg border ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-[#64748b]"}`} aria-label={trip.isChecked ? "Als nicht übernommen markieren" : "Als übernommen markieren"} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}><FontAwesomeIcon icon={faCheck} className={`h-4 w-4 ${trip.isChecked ? "" : "opacity-20"}`} /></button>} />
+      <div ref={desktopTableRef} key={`desktop-${month}`} className={`relative hidden lg:block ${isPending ? "opacity-65" : ""}`}>
+        <div className="trip-sticky-header" data-testid="trip-sticky-header" data-visible={stickyHeaderVisible} aria-hidden="true">
+          <div className="trip-sticky-header-viewport" style={{ width: tableViewportWidth }}>
+            <div className="trip-sticky-header-row" style={{ width: screenLayout.tableWidth, gridTemplateColumns: [...screenLayout.columnWidths, screenLayout.actionWidth].map((width) => `${width}px`).join(" "), transform: `translateX(-${tableScrollLeft}px)` }}>
+              {screenColumns.map((column) => <div key={column.id} className={`trip-sticky-header-cell ${numericColumns.has(column.id) ? "text-right" : ""}`} data-column={column.id}><span className="trip-column-info">{column.headerInfo}</span><span className="trip-column-title">{column.headerTitle}</span></div>)}
+              <div className="trip-sticky-header-cell" />
+            </div>
+          </div>
+        </div>
+        <div ref={desktopScrollRef} data-testid="trip-scroll-area" className="section-enter overflow-x-auto rounded-[20px] border border-[#dbe3ee] bg-white">
+          <TripTable data={data} visibleColumns={visibleColumns} screenWidth={tableViewportWidth} onEdit={(trip) => setModal({ key: `edit-${trip.id}`, trip })} action={(trip) => <button type="button" className={`focus-ring mx-auto grid h-7 w-7 place-items-center rounded-lg border ${trip.isChecked ? "border-[#86efac] bg-[#dcfce7] text-[#15803d]" : "border-[#cbd5e1] bg-white text-[#64748b]"}`} aria-label={trip.isChecked ? "Als nicht übernommen markieren" : "Als übernommen markieren"} aria-pressed={trip.isChecked} disabled={checkingTripId === trip.id} onClick={() => void toggleChecked(trip)}><FontAwesomeIcon icon={faCheck} className={`h-4 w-4 ${trip.isChecked ? "" : "opacity-20"}`} /></button>} />
+        </div>
       </div>
       <div key={`mobile-${month}`} className={`space-y-3 lg:hidden ${isPending ? "opacity-65" : ""}`}>
         {data.trips.length ? data.trips.map((trip) => <article key={trip.id} data-testid="mobile-trip-card" className={`rounded-2xl border p-4 ${trip.isChecked ? "border-[#bbf7d0] bg-[#f0fdf4]" : "border-[#dbe3ee] bg-white"}`}>

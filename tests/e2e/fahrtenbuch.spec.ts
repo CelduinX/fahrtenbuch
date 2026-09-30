@@ -132,11 +132,14 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
   }));
   expect(dialogOverflow.scrollWidth).toBeLessThanOrEqual(dialogOverflow.clientWidth + 1);
   const hourOptions = page.getByRole("listbox", { name: "Beginn: Stunde" }).getByRole("option");
-  await expect(hourOptions).toHaveCount(24);
+  await expect(hourOptions).toHaveCount(12);
   await expect(page.getByRole("option", { name: "00", exact: true })).toBeVisible();
+  await expect(page.getByRole("option", { name: "11", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "12–23 Uhr" }).click();
   await expect(page.getByRole("option", { name: "12", exact: true })).toBeVisible();
   await expect(page.getByRole("option", { name: "13", exact: true })).toBeVisible();
   await expect(page.getByRole("option", { name: "23", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "00–11 Uhr" }).click();
   await page.screenshot({ path: "test-results/time-picker.png", fullPage: true });
   await page.getByRole("option", { name: "08", exact: true }).click();
   await expect(page.getByRole("listbox", { name: "Beginn: Minute" }).getByRole("option")).toHaveCount(12);
@@ -335,16 +338,17 @@ test("Alle Hauptansichten bleiben in Smartphone-Hochformat bedienbar", async ({ 
     await page.goto(`/trips?month=${month}`);
     const tripCard = page.getByTestId("mobile-trip-card").filter({ hasText: `Mobil ${suffix}` }).first();
     await expect(tripCard).toBeVisible();
-    await expect(tripCard.getByTestId("trip-place-note")).toContainText("Kundenstandort Berlin");
+    await expect(tripCard.getByTestId("trip-place-note")).toHaveCount(0);
     await expectNoPageOverflow(page, `${label} populated trips`);
     await tripCard.locator("button").first().click();
     const tripDialog = page.getByRole("dialog");
     await expect(tripDialog).toBeVisible();
+    await expect(tripDialog.getByText("Kundenstandort Berlin")).toBeVisible();
     await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
     await expect(tripDialog.locator("footer")).toBeVisible();
     await page.getByRole("button", { name: "Beginn-Auswahl öffnen" }).click();
     const hourOptions = page.getByRole("listbox", { name: "Beginn: Stunde" }).getByRole("option");
-    await expect(hourOptions).toHaveCount(24);
+    await expect(hourOptions).toHaveCount(12);
     await page.waitForTimeout(250);
     const optionSizes = await hourOptions.evaluateAll((options) => options.map((option) => {
       const rect = option.getBoundingClientRect();
@@ -420,8 +424,10 @@ test("Ausgeschriebene Orte erscheinen rueckwirkend mobil und im mehrseitigen Dru
   await page.goto("/trips?month=2035-02");
   const cards = page.getByTestId("mobile-trip-card");
   await expect(cards).toHaveCount(28);
-  await expect(cards.first().getByTestId("trip-place-note")).toHaveText(originFullName + " \u2192 " + destinationFullName);
-  await expect(cards.nth(1).getByTestId("trip-place-note")).toHaveText(destinationFullName + " \u2192 " + originFullName);
+  await expect(cards.getByTestId("trip-place-note")).toHaveCount(0);
+  await cards.first().getByRole("button").first().click();
+  await expect(page.getByRole("dialog").getByTestId("trip-place-note")).toHaveText(originFullName + " \u2192 " + destinationFullName);
+  await page.getByRole("dialog").getByRole("button", { name: "Abbrechen", exact: true }).click();
   await expectNoPageOverflow(page, "long place names in mobile trips");
   await page.goto("/print?month=2035-02");
   await expect(page.getByTestId("print-table-wrap").getByTestId("trip-place-note")).toHaveCount(28);

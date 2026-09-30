@@ -26,7 +26,7 @@ test("Globale Spaltenauswahl, Desktopbreiten, mobile Ansicht und Druck", async (
     expect(frames).toEqual(Array(3).fill({ x: 160, width: 1600, padding: "32px" }));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
-  const route = await page.request.post("/api/routes", { data: { placeA: "LangerStartortOhneTrennzeichen".repeat(3), placeB: "Außenstelle Spalten", distanceKm: 23, reimbursedKm: 17, durationMinutes: 30 } });
+  const route = await page.request.post("/api/routes", { data: { placeA: "LangerStartortOhneTrennzeichen".repeat(3), placeB: "Außenstelle Spalten", placeAFullName: "Sehr langer ausgeschriebener Startort", placeBFullName: "Außenstelle Spalten vollständig", distanceKm: 23, reimbursedKm: 17, durationMinutes: 30 } });
   expect(route.ok()).toBe(true);
   const routePairId = (await route.json()).route.id;
   const staff = 'Müller; "Anna"\nÖztürk und Schmidt';
@@ -58,16 +58,35 @@ test("Globale Spaltenauswahl, Desktopbreiten, mobile Ansicht und Druck", async (
       await expect(header.locator(".trip-column-info")).toHaveText(column.headerInfo);
       await expect(header.locator(".trip-column-title")).toHaveText(column.headerTitle);
     }
-    expect(await page.locator(".trip-column-title").evaluateAll(elements => new Set(elements.map(element => element.getBoundingClientRect().top)).size)).toBe(1);
+    expect(await page.locator(".trip-screen-table .trip-column-title").evaluateAll(elements => new Set(elements.map(element => element.getBoundingClientRect().top)).size)).toBe(1);
     await expect(page.getByTestId("desktop-trip").locator("td").first()).toHaveCSS("font-size", "14px");
     await expect(page.getByTestId("desktop-trip").locator("td")).toHaveCount(14);
     expect(await page.getByTestId("desktop-trip").locator("td").evaluateAll((cells) => new Set(cells.map((cell) => cell.getBoundingClientRect().top)).size)).toBe(1);
+    expect(await page.getByTestId("desktop-trip").first().locator(".trip-cell-value").evaluateAll((values) => values.every((value) => getComputedStyle(value).whiteSpace === "nowrap" && value.scrollHeight <= value.clientHeight + 1))).toBe(true);
     expect(await page.locator("table").evaluate((table) => getComputedStyle(table.parentElement!).overflowX)).toBe("auto");
     await page.screenshot({ path: `test-results/columns-${width}.png`, fullPage: true });
     const overflowing = await page.locator("table").evaluate((table) => Array.from(table.querySelectorAll("th, td")).filter((cell) => cell.scrollWidth > cell.clientWidth + 1).map((cell) => ({ text: cell.textContent, scroll: cell.scrollWidth, client: cell.clientWidth, wrap: getComputedStyle(cell).overflowWrap, whitespace: getComputedStyle(cell).whiteSpace })));
     expect(overflowing, `${width}px`).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
+  await page.request.patch("/api/settings/trip-columns", { data: { visibleColumns: TRIP_COLUMNS.map((column) => column.id).filter((id) => !["accompanyingStaff", "remark"].includes(id)) } });
+  await page.reload();
+  const widthsByViewport: number[][] = [];
+  for (const width of [1280, 1920]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect.poll(() => page.locator(".trip-screen-table").evaluate((table) => Math.abs(table.getBoundingClientRect().width - table.parentElement!.clientWidth))).toBeLessThan(1);
+    widthsByViewport.push(await page.locator("thead th").evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().width)));
+  }
+  await page.screenshot({ path: "test-results/columns-flexible-1920.png", fullPage: true });
+  expect(widthsByViewport[1].slice(0, -1).every((value, index) => value > widthsByViewport[0][index])).toBe(true);
+  expect(widthsByViewport[1].at(-1)).toBeCloseTo(widthsByViewport[0].at(-1)!, 0);
+  await columnsButton.click();
+  await page.getByRole("button", { name: "Alle anzeigen" }).click();
+  await columnsButton.click();
+  await expect(columnsButton).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("desktop-trip").first().getByTestId("trip-place-note")).toHaveCount(0);
+  await expect(page.getByTestId("desktop-trip").first().locator('[data-column="routeLabel"] .trip-cell-value')).toHaveAttribute("title", /Sehr langer ausgeschriebener Startort.*Außenstelle Spalten vollständig/s);
+  await expect(page.getByTestId("desktop-trip").first().locator('[data-column="remark"] .trip-cell-value')).toHaveAttribute("title", remark);
   await page.getByRole("button", { name: "Als übernommen markieren", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Als nicht übernommen markieren" })).toHaveAttribute("aria-pressed", "true");
@@ -143,6 +162,8 @@ test("Globale Spaltenauswahl, Desktopbreiten, mobile Ansicht und Druck", async (
   await expect(page.locator("thead th:not(:last-child)")).toHaveText(["Bemerkungen", "möglicheErstattung"]);
   await page.getByTestId("desktop-trip").locator("td").first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog").locator("#trip-staff")).toHaveValue(staff.replace(/\n/g, " "));
+  await expect(page.getByRole("dialog").locator("#trip-remark")).toHaveValue(remark.replace(/\n/g, " "));
   await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
   await page.request.patch("/api/settings/print-columns", { data: { visibleColumns: ["date"] } });
   await page.goto("/print?month=2040-01");
@@ -172,4 +193,70 @@ test("Globale Spaltenauswahl, Desktopbreiten, mobile Ansicht und Druck", async (
   await page.getByRole("checkbox", { name: "Bemerkungen", exact: true }).uncheck();
   await expect(page.locator(".print-pages .print-sheet")).toHaveCount(1);
 
+});
+
+test("Gleicher Zusatzraum, fixierte Kopfzeile, Zeilenfarben und ausgerichtete Summen", async ({ page }) => {
+  await page.request.post("/api/auth/login", { data: { username: "admin", password: "admin" } });
+  const route = await page.request.post("/api/routes", { data: { placeA: "Layout-HO", placeB: "Layout-AG", distanceKm: 18, reimbursedKm: 15, durationMinutes: 20 } });
+  expect(route.ok()).toBe(true);
+  const routePairId = (await route.json()).route.id;
+  for (let day = 1; day <= 25; day++) {
+    const response = await page.request.post("/api/trips", { data: { date: `2042-01-${String(day).padStart(2, "0")}`, startTime: "08:00", endTime: "08:20", odometerStart: day * 20, routePairId, direction: "A_TO_B" } });
+    expect(response.ok()).toBe(true);
+  }
+  await page.request.patch("/api/settings/trip-columns", { data: { visibleColumns: TRIP_COLUMNS.map((column) => column.id).filter((id) => id !== "accompanyingStaff") } });
+  await page.goto("/trips?month=2042-01");
+  await expect(page.getByTestId("desktop-trip")).toHaveCount(25);
+
+  const widths: number[][] = [];
+  for (const width of [1280, 1920]) {
+    await page.setViewportSize({ width, height: 600 });
+    widths.push(await page.locator(".trip-screen-table col").evaluateAll((columns) => columns.map((column) => column.getBoundingClientRect().width)));
+  }
+  const gains = widths[1].slice(0, -1).map((width, index) => width - widths[0][index]);
+  expect(Math.max(...gains) - Math.min(...gains)).toBeLessThan(1);
+  expect(widths[1].at(-1)).toBeCloseTo(widths[0].at(-1)!, 0);
+
+  const bodyColors = await page.getByTestId("desktop-trip").evaluateAll((rows) => rows.slice(0, 3).map((row) => getComputedStyle(row).backgroundColor));
+  expect(bodyColors[0]).toBe(bodyColors[2]);
+  expect(bodyColors[1]).not.toBe(bodyColors[0]);
+  const totalAlignment = await page.locator(".trip-screen-table").evaluate((table) => ["distanceKm", "reimbursedKm", "unreimbursedKm", "potentialReimbursementCents"].map((id) => {
+    const value = table.querySelector(`tbody tr:first-child td[data-column="${id}"] .trip-cell-value`)!;
+    const total = table.querySelector(`tfoot td[data-column="${id}"]`)!;
+    const right = (element: Element) => { const range = document.createRange(); range.selectNodeContents(element); return range.getBoundingClientRect().right; };
+    return Math.abs(right(value) - right(total));
+  }));
+  expect(totalAlignment.every((difference) => difference < 1)).toBe(true);
+
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await page.evaluate(() => window.scrollTo(0, 700));
+  await expect(page.getByTestId("trip-sticky-header")).toHaveAttribute("data-visible", "true");
+  expect(await page.getByTestId("trip-sticky-header").evaluate((header) => header.getBoundingClientRect().top)).toBe(0);
+  await page.getByTestId("trip-scroll-area").evaluate((scrollArea) => { scrollArea.scrollLeft = 180; });
+  await expect.poll(() => page.getByTestId("trip-sticky-header").evaluate((header) => Math.abs(header.querySelector('[data-column="routeLabel"]')!.getBoundingClientRect().left - document.querySelector('.trip-screen-table th[data-column="routeLabel"]')!.getBoundingClientRect().left))).toBeLessThan(2);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.getByTestId("trip-sticky-header")).toHaveAttribute("data-visible", "false");
+});
+
+test("Monatsauswahl und kompakte Eingabefelder bleiben mobil bedienbar", async ({ page }) => {
+  await page.request.post("/api/auth/login", { data: { username: "admin", password: "admin" } });
+  expect((await page.request.post("/api/routes", { data: { placeA: "Picker-HO", placeB: "Picker-AG", distanceKm: 10, reimbursedKm: 10, durationMinutes: 20 } })).ok()).toBe(true);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/trips?month=2042-01");
+  await expect(page.getByText("Standard-Zugang aktiv.")).toHaveCount(0);
+  await page.getByRole("button", { name: "Monat wählen" }).click();
+  const picker = page.getByRole("dialog", { name: "Monat auswählen" });
+  await expect(picker).toBeVisible();
+  await picker.getByRole("button", { name: "Nächstes Jahr" }).click();
+  await picker.getByRole("button", { name: "Mai 2043" }).click();
+  await expect(page.getByRole("heading", { name: "Mai 2043" })).toBeVisible();
+  await page.getByRole("button", { name: "Monat wählen" }).click();
+  await page.keyboard.press("Escape");
+  await expect(picker).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  await page.getByRole("button", { name: /Neue Fahrt/ }).click();
+  const form = page.getByRole("dialog").locator("form");
+  await expect(form.locator("#trip-staff")).toHaveAttribute("type", "text");
+  await expect(form.locator("#trip-remark")).toHaveAttribute("type", "text");
 });

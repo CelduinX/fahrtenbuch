@@ -7,15 +7,11 @@ import { createPortal } from "react-dom";
 import type { RemarkSettingsDto, RouteOptionDto, TripDto } from "@/lib/types";
 import { calculateLinkedTime, filterRouteOptions, isValidTime, type TimeAnchor } from "@/lib/trip-form";
 import { Modal } from "./Modal";
+import { TripPlaceNote } from "./TripPlaceNote";
 import { useAnimatedPresence } from "./useAnimatedPresence";
 
 export const PICKER_HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
 export const PICKER_MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0"));
-
-const HOUR_RINGS = [
-  { options: ["12", ...PICKER_HOURS.slice(1, 12)], radius: 42 },
-  { options: ["00", ...PICKER_HOURS.slice(13)], radius: 25 },
-] as const;
 
 function TimeField({ id, label, value, alignRight = false, onChange }: {
   id: string;
@@ -26,6 +22,7 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
 }) {
   const [open, setOpen] = useState(false);
   const [pickerStep, setPickerStep] = useState<"hour" | "minute">("hour");
+  const [hourPage, setHourPage] = useState<0 | 1>(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const [pickerPosition, setPickerPosition] = useState<{ left: number; top: number } | null>(null);
@@ -43,12 +40,12 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
     function updatePosition() {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(280, window.innerWidth - 16);
+      const width = Math.min(320, window.innerWidth - 16);
       const gap = 8;
       const viewportPadding = 8;
       const preferredLeft = alignRight ? rect.right - width : rect.left;
       const left = Math.max(viewportPadding, Math.min(preferredLeft, window.innerWidth - width - viewportPadding));
-      const pickerHeight = pickerRef.current?.offsetHeight ?? 370;
+      const pickerHeight = pickerRef.current?.offsetHeight ?? 440;
       const fitsBelow = rect.bottom + gap + pickerHeight <= window.innerHeight - viewportPadding;
       const top = fitsBelow ? rect.bottom + gap : Math.max(viewportPadding, rect.top - pickerHeight - gap);
       setPickerPosition({ left, top });
@@ -91,7 +88,7 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
           value={value}
           required
           autoComplete="off"
-          onFocus={() => setOpen(true)}
+          onFocus={() => { setHourPage(Number(hour) >= 12 ? 1 : 0); setPickerStep("hour"); setOpen(true); }}
           onClick={() => setOpen(true)}
           onChange={(event) => { onChange(event.target.value.replace(/[^0-9:]/g, "").slice(0, 5)); setOpen(false); }}
           onKeyDown={(event) => {
@@ -102,23 +99,27 @@ function TimeField({ id, label, value, alignRight = false, onChange }: {
             }
           }}
         />
-        <button type="button" className="focus-ring grid min-h-11 w-11 shrink-0 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff]" aria-label={`${label}-Auswahl öffnen`} onClick={() => setOpen((current) => !current)}>
+        <button type="button" className="focus-ring grid min-h-11 w-11 shrink-0 place-items-center rounded-lg text-[#64748b] hover:bg-[#eff6ff]" aria-label={`${label}-Auswahl öffnen`} onClick={() => { setHourPage(Number(hour) >= 12 ? 1 : 0); setPickerStep("hour"); setOpen((current) => !current); }}>
           <FontAwesomeIcon icon={faClock} className="h-[18px] w-[18px]" />
         </button>
       </div>
 
       {pickerPresence.rendered && pickerPosition ? createPortal(
-        <div ref={pickerRef} data-state={pickerPresence.state} className="popover fixed z-[70] w-[280px] max-w-[calc(100vw-16px)] rounded-2xl border border-[#dbe3ee] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,.18)]" style={pickerPosition}>
-          <div className="mb-4 flex justify-center rounded-xl bg-[#2563eb] p-2 text-center text-3xl font-extrabold tabular-nums text-white"><button type="button" className={`focus-ring min-h-11 rounded-lg px-3 ${pickerStep === "hour" ? "bg-white/20" : ""}`} onClick={() => setPickerStep("hour")}>{hour || "--"}</button><span className="py-1">:</span><button type="button" className={`focus-ring min-h-11 rounded-lg px-3 ${pickerStep === "minute" ? "bg-white/20" : ""}`} onClick={() => setPickerStep("minute")} disabled={!hour}>{minute || "00"}</button></div>
-          <p className="mb-3 text-center text-xs font-extrabold uppercase tracking-[.12em] text-[#64748b]">{pickerStep === "hour" ? "Stunde wählen" : "Minute wählen"}</p>
-          <div className="relative mx-auto h-[230px] w-[230px] rounded-full bg-[#eff6ff]" role="listbox" aria-label={`${label}: ${pickerStep === "hour" ? "Stunde" : "Minute"}`}>
-            <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2563eb]" />
-            {(pickerStep === "hour" ? HOUR_RINGS : [{ options: PICKER_MINUTES, radius: 42 }]).flatMap((ring) => ring.options.map((option, index) => {
-              const angle = (index / ring.options.length) * Math.PI * 2 - Math.PI / 2;
+        <div ref={pickerRef} data-state={pickerPresence.state} className="popover fixed z-[70] w-[320px] max-w-[calc(100vw-16px)] rounded-2xl border border-[#dbe3ee] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,.18)]" style={pickerPosition}>
+          <p className="mb-2 text-xs font-bold text-[#64748b]">{label} auswählen</p>
+          <div className="mb-3 flex items-center justify-center rounded-xl bg-[#eff6ff] p-2 text-center text-3xl font-extrabold tabular-nums text-[#1e40af]"><button type="button" aria-label="Stunde wählen" className={`focus-ring min-h-11 rounded-lg px-3 ${pickerStep === "hour" ? "bg-[#2563eb] text-white shadow-sm" : "hover:bg-white"}`} onClick={() => setPickerStep("hour")}>{hour || "--"}</button><span className="px-1">:</span><button type="button" aria-label="Minute wählen" className={`focus-ring min-h-11 rounded-lg px-3 ${pickerStep === "minute" ? "bg-[#2563eb] text-white shadow-sm" : "hover:bg-white"}`} onClick={() => setPickerStep("minute")} disabled={!hour}>{minute || "00"}</button></div>
+          {pickerStep === "hour" ? <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-[#f1f5f9] p-1" aria-label="Stundenbereich">
+            {([0, 1] as const).map((page) => <button key={page} type="button" className={`focus-ring h-9 rounded-lg text-xs font-bold tabular-nums ${hourPage === page ? "bg-white text-[#1d4ed8] shadow-sm" : "text-[#64748b] hover:text-[#1d4ed8]"}`} aria-pressed={hourPage === page} onClick={() => setHourPage(page)}>{page === 0 ? "00–11 Uhr" : "12–23 Uhr"}</button>)}
+          </div> : <p className="mb-3 text-center text-xs font-semibold text-[#64748b]">Minuten in 5-Minuten-Schritten</p>}
+          <div className="relative mx-auto h-[248px] w-[248px] rounded-full bg-[#eef3fb]" role="listbox" aria-label={`${label}: ${pickerStep === "hour" ? "Stunde" : "Minute"}`}>
+            <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2563eb]" />
+            {(pickerStep === "hour" ? PICKER_HOURS.slice(hourPage * 12, hourPage * 12 + 12) : PICKER_MINUTES).map((option, index) => {
+              const angle = (index / 12) * Math.PI * 2 - Math.PI / 2;
               const selected = option === (pickerStep === "hour" ? hour : minute);
-              return <button key={option} type="button" role="option" aria-selected={selected} className={`focus-ring absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-extrabold tabular-nums ${selected ? "z-10 bg-[#2563eb] text-white shadow-md" : "text-[#334155] hover:z-10 hover:bg-white"}`} style={{ left: `${50 + Math.cos(angle) * ring.radius}%`, top: `${50 + Math.sin(angle) * ring.radius}%` }} onMouseDown={(event) => event.preventDefault()} onClick={() => pickerStep === "hour" ? selectHour(option) : selectMinute(option)}>{option}</button>;
-            }))}
+              return <button key={option} type="button" role="option" aria-selected={selected} className={`focus-ring absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-sm font-bold tabular-nums transition-colors ${selected ? "z-10 bg-[#2563eb] text-white shadow-md" : "text-[#334155] hover:z-10 hover:bg-white hover:text-[#1d4ed8]"}`} style={{ left: `${50 + Math.cos(angle) * 41}%`, top: `${50 + Math.sin(angle) * 41}%` }} onMouseDown={(event) => event.preventDefault()} onClick={() => pickerStep === "hour" ? selectHour(option) : selectMinute(option)}>{option}</button>;
+            })}
           </div>
+          <div className="mt-3 flex justify-end"><button type="button" className="focus-ring rounded-lg px-3 py-2 text-sm font-bold text-[#2563eb] hover:bg-[#eff6ff]" onClick={() => setOpen(false)}>Fertig</button></div>
         </div>,
         document.body,
       ) : null}
@@ -447,6 +448,10 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
             <label className="label" htmlFor="trip-route">Reiseweg</label>
             <RouteCombobox value={routeInput} options={routeOptions} onTextChange={changeRouteText} onSelect={chooseRoute} />
             <p className="mt-2 text-xs text-[#64748b]">Nur zuvor angelegte Reisewege können ausgewählt werden.</p>
+            {!routeChanged && (trip.originFullName || trip.destinationFullName) ? <div className="mt-3 rounded-xl border border-[#dbe3ee] bg-[#f8fafc] px-3 py-2.5">
+              <p className="text-xs font-bold text-[#475569]">Ausgeschriebene Orte</p>
+              <TripPlaceNote originFullName={trip.originFullName} destinationFullName={trip.destinationFullName} />
+            </div> : null}
           </div> : null}
 
           <div className="grid grid-cols-1 gap-4 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4 sm:grid-cols-3">
@@ -467,7 +472,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
           {error ? <p role="alert" className="status-enter rounded-xl border border-[#f1d2cf] bg-[#fff4f3] px-4 py-3 text-sm font-medium text-[#a33c36]">{error}</p> : null}
           <div>
             <label className="label" htmlFor="trip-staff">Mitgenommene Bedienstete</label>
-            <textarea id="trip-staff" className="field" rows={2} maxLength={2000} value={accompanyingStaff} onChange={(event) => setAccompanyingStaff(event.target.value)} />
+            <input id="trip-staff" type="text" className="field" maxLength={2000} value={accompanyingStaff.replace(/\r?\n/g, " ")} onChange={(event) => setAccompanyingStaff(event.target.value)} />
           </div>
           <div className="space-y-3">
             <div>
@@ -484,7 +489,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
             </div>
             <div>
               <label className="label" htmlFor="trip-remark">Bemerkung</label>
-              <textarea id="trip-remark" className="field" rows={3} maxLength={2000} value={remark} onChange={(event) => { remarkTouched.current = true; setSelectedRemarkId(""); setRemark(event.target.value); }} />
+              <input id="trip-remark" type="text" className="field" maxLength={2000} value={remark.replace(/\r?\n/g, " ")} onChange={(event) => { remarkTouched.current = true; setSelectedRemarkId(""); setRemark(event.target.value); }} />
               <p className="mt-2 text-xs text-[#64748b]">Vorlagentexte kannst du frei bearbeiten oder ergänzen.</p>
             </div>
           </div>

@@ -1,5 +1,4 @@
 import { AppHeader } from "@/components/AppHeader";
-import { DefaultCredentialsNotice } from "@/components/DefaultCredentialsNotice";
 import { SettingsClient, type SettingsTab } from "@/components/SettingsClient";
 import { requirePageUser } from "@/lib/auth";
 import { getActiveRoutePairs } from "@/lib/repositories/routes";
@@ -25,7 +24,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     <>
       <AppHeader />
       <main className="app-frame app-content page-enter py-5 lg:py-6">
-        {user.usesDefaultCredentials ? <DefaultCredentialsNotice /> : null}
         <div className="section-enter mb-5">
           <p className="mb-2 text-xs font-extrabold uppercase tracking-[.16em] text-[#475569]">Konfiguration</p>
           <h1 className="text-[29px] font-extrabold tracking-[-.04em] sm:text-[32px] lg:text-[34px]">Einstellungen</h1>

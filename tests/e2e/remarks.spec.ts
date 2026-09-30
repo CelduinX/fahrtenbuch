@@ -34,8 +34,8 @@ test("Bemerkungsvorlagen, Fahrttexte und CSV funktionieren auf Desktop, mobil un
   await expect(dialog.getByLabel("Bemerkungsvorlage")).not.toHaveValue("");
   await dialog.getByLabel("Bemerkungsvorlage").selectOption({ label: "Ortstermin" });
   await expect(dialog.getByLabel("Bemerkung", { exact: true })).toHaveValue("Ortstermin");
-  const staff = 'Müller; "Anna"\nSchmidt';
-  const remark = 'Ortstermin; "Projekt"\nZusätzlicher Freitext';
+  const staff = 'Müller; "Anna" Schmidt';
+  const remark = 'Ortstermin; "Projekt" Zusätzlicher Freitext';
   await dialog.getByLabel("Bemerkung", { exact: true }).fill(remark);
   await dialog.getByLabel("Mitgenommene Bedienstete").fill(staff);
   await dialog.getByRole("combobox", { name: "Reiseweg" }).fill("HH-Texte");

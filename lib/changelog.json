@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.0.10",
+    "date": "2026-09-30",
+    "title": "Fahrtenübersicht und Eingabedialoge optisch verbessern",
+    "fileCount": 15,
+    "files": [
+      "app/globals.css",
+      "app/page.tsx",
+      "app/settings/page.tsx",
+      "app/trips/page.tsx",
+      "components/AppHeader.tsx",
+      "components/DashboardClient.tsx",
+      "components/DefaultCredentialsNotice.tsx",
+      "components/MonthPicker.tsx",
+      "components/TripData.tsx",
+      "components/TripModal.tsx",
+      "components/TripPlaceNote.tsx",
+      "lib/trip-columns.ts",
+      "tests/e2e/fahrtenbuch.spec.ts",
+      "tests/e2e/remarks.spec.ts",
+      "tests/e2e/trip-columns.spec.ts"
+    ],
+    "fingerprint": "7f6b334e4aeb85fe"
+  },
+  {
     "version": "1.0.9",
     "date": "2026-09-29",
     "title": "Fahrtenübersicht, Spaltenauswahl und A4-Druck optimieren; KFZ-Kennzeichen und AMD64-Release ergänzen",

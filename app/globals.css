@@ -423,8 +423,34 @@ p { text-wrap: pretty; }
 .trip-column-info { display: block; height: 1.35em; font-size: 11px; font-weight: 400; white-space: nowrap; }
 .print-table .trip-column-info { font-size: 9px; }
 .trip-column-title { display: block; white-space: nowrap; color: #475569; }
-.trip-screen-table th, .trip-screen-table td { padding: 14px 8px; }
+.trip-screen-table th, .trip-screen-table td { padding: 11px 10px; }
+.trip-screen-table thead th { border-bottom: 1px solid #dbe3ee; background: #f8fafc; }
+.trip-screen-table tbody tr:nth-child(even):not([data-checked="true"]) { background: #f5f8fe; }
+.trip-screen-table tbody tr[data-checked="true"] { background: #f0fdf4; }
+.trip-screen-table tbody tr[data-editable="true"]:hover { background: #eaf2ff; }
+.trip-screen-table tbody tr[data-editable="true"][data-checked="true"]:hover { background: #dcfce7; }
+.trip-screen-table tbody td { overflow: hidden; vertical-align: middle; white-space: nowrap; }
+.trip-screen-table tbody td:first-child { position: relative; }
+.trip-screen-table .trip-cell-value { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-screen-table :is(th, td)[data-column="odometerStart"],
+.trip-screen-table :is(th, td)[data-column="odometerEnd"],
+.trip-screen-table :is(th, td)[data-column="distanceKm"],
+.trip-screen-table :is(th, td)[data-column="reimbursedKm"],
+.trip-screen-table :is(th, td)[data-column="unreimbursedKm"],
+.trip-screen-table :is(th, td)[data-column="potentialReimbursementCents"] { text-align: right; font-variant-numeric: tabular-nums; }
+.trip-screen-table :is(th, td)[data-column="sequenceNumber"],
+.trip-screen-table :is(th, td)[data-column="date"],
+.trip-screen-table :is(th, td)[data-column="startTime"],
+.trip-screen-table :is(th, td)[data-column="endTime"] { font-variant-numeric: tabular-nums; }
 .trip-screen-table tr > :first-child { padding-left: 16px; }
+.trip-screen-table tfoot td { padding-top: 19px; padding-bottom: 19px; vertical-align: middle; white-space: nowrap; }
+.trip-screen-table tfoot tr { border-top-color: #2563eb; background: #eaf2ff; color: #1e3a5f; }
+.trip-sticky-header { position: sticky; top: 0; z-index: 20; height: 0; pointer-events: none; visibility: hidden; }
+.trip-sticky-header[data-visible="true"] { visibility: visible; }
+.trip-sticky-header-viewport { overflow: hidden; max-width: 100%; border-radius: 0 0 12px 12px; background: #f8fafc; box-shadow: 0 3px 12px rgba(15, 23, 42, .14); }
+.trip-sticky-header-row { display: grid; background: #f8fafc; color: #64748b; font-size: 14px; font-weight: 700; }
+.trip-sticky-header-cell { min-width: 0; padding: 11px 10px; border-bottom: 1px solid #dbe3ee; line-height: 1.35; white-space: nowrap; }
+.trip-sticky-header-cell:first-child { padding-left: 16px; }
 .print-table th, .print-table td { padding: 5px 3px; }
 @media print { .print-table th, .print-table td { padding: 5px 3px; } }
 

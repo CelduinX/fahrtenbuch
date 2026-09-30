@@ -18,12 +18,12 @@ export const TRIP_COLUMNS = [
   { id: "potentialReimbursementCents", label: "mögliche Erstattung", headerInfo: "mögliche", headerTitle: "Erstattung", width: 8 },
 ] as const;
 export type TripColumnId = typeof TRIP_COLUMNS[number]["id"];
-// Compact widths for short values; text columns share the remaining space.
+// Minimum screen widths; all visible data columns share additional space equally.
 export const TRIP_SCREEN_COLUMN_WIDTHS: Record<TripColumnId, number> = {
   sequenceNumber: 56, date: 96, startTime: 64, endTime: 64,
-  routeLabel: 220, odometerStart: 82, odometerEnd: 82, distanceKm: 84,
-  accompanyingStaff: 180, remark: 200, reimbursedKm: 108,
-  unreimbursedKm: 140, potentialReimbursementCents: 104,
+  routeLabel: 140, odometerStart: 82, odometerEnd: 82, distanceKm: 84,
+  accompanyingStaff: 160, remark: 140, reimbursedKm: 108,
+  unreimbursedKm: 160, potentialReimbursementCents: 104,
 };
 // Physical print widths keep dates and numbers compact even when columns are hidden.
 export const TRIP_PRINT_COLUMN_WIDTHS: Record<TripColumnId, number> = {
@@ -33,6 +33,19 @@ export const TRIP_PRINT_COLUMN_WIDTHS: Record<TripColumnId, number> = {
   unreimbursedKm: 112, potentialReimbursementCents: 70,
 };
 export const TRIP_TEXT_COLUMN_IDS: TripColumnId[] = ["routeLabel", "accompanyingStaff", "remark"];
+export const TRIP_ACTION_COLUMN_WIDTH = 52;
+export function screenTripColumnLayout(visibleColumns: TripColumnId[], containerWidth?: number, hasAction = false) {
+  const columns = TRIP_COLUMNS.filter((column) => visibleColumns.includes(column.id));
+  const actionWidth = hasAction ? TRIP_ACTION_COLUMN_WIDTH : 0;
+  const minimumWidth = columns.reduce((sum, column) => sum + TRIP_SCREEN_COLUMN_WIDTHS[column.id], actionWidth);
+  const tableWidth = Math.max(containerWidth ?? minimumWidth, minimumWidth);
+  const extraPerColumn = (tableWidth - minimumWidth) / columns.length;
+  return {
+    tableWidth,
+    actionWidth,
+    columnWidths: columns.map((column) => TRIP_SCREEN_COLUMN_WIDTHS[column.id] + extraPerColumn),
+  };
+}
 export const ALL_TRIP_COLUMN_IDS = TRIP_COLUMNS.map((column) => column.id);
 export const tripColumnsSettingsSchema = z.object({
   visibleColumns: z.array(z.enum(ALL_TRIP_COLUMN_IDS)).min(1).max(TRIP_COLUMNS.length)

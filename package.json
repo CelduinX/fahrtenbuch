@@ -1,6 +1,6 @@
 {
   "name": "fahrtenbuch",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "private": true,
   "scripts": {
     "dev": "npm run db:migrate && next dev",
