@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.0.12",
+    "date": "2026-10-01",
+    "title": "Next.js-Sicherheitsupdate für den Docker-Build",
+    "fileCount": 0,
+    "files": [],
+    "fingerprint": "cdc372b730ee81bc"
+  },
+  {
     "version": "1.0.11",
     "date": "2026-10-01",
     "title": "A4-Druck auf 15 Fahrten pro Seite verdichten",
