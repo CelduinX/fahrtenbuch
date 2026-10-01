@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.11",
+    "date": "2026-10-01",
+    "title": "A4-Druck auf 15 Fahrten pro Seite verdichten",
+    "fileCount": 3,
+    "files": [
+      "app/globals.css",
+      "components/PrintPreview.tsx",
+      "tests/e2e/print-density.spec.ts"
+    ],
+    "fingerprint": "611e505815f1da4f"
+  },
+  {
     "version": "1.0.10",
     "date": "2026-09-30",
     "title": "Fahrtenübersicht und Eingabedialoge optisch verbessern",

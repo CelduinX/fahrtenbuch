@@ -75,10 +75,11 @@ export function PrintPreview(props: Props) {
       const footer = measure.querySelector<HTMLElement>("footer")!;
       const table = measure.querySelector<HTMLTableElement>("table")!;
       const height = (element: HTMLElement) => element.offsetHeight + parseFloat(getComputedStyle(element).marginTop) + parseFloat(getComputedStyle(element).marginBottom);
-      // Reserve the total row on each page so the final page always fits.
-      const capacity = content.clientHeight - height(header) - height(footer) - table.tHead!.offsetHeight - table.tFoot!.offsetHeight - 4;
+      const capacity = content.clientHeight - height(header) - height(footer) - table.tHead!.offsetHeight - 4;
+      // The monthly total is printed only on the last page.
+      const finalCapacity = capacity - table.tFoot!.offsetHeight;
       const rowHeights = Array.from(table.tBodies[0].rows, (row) => row.getBoundingClientRect().height);
-      const oversized = measuredTrips.findIndex((_, index) => rowHeights[index] > capacity);
+      const oversized = measuredTrips.findIndex((_, index) => rowHeights[index] > finalCapacity);
       if (oversized >= 0) {
         const parts = splitTrip(measuredTrips[oversized]);
         if (parts.length > 1) {
@@ -86,14 +87,28 @@ export function PrintPreview(props: Props) {
           return;
         }
       }
-      const nextPages: TripDto[][] = [[]];
+      const nextPages: number[][] = [[]];
       let used = 0;
-      measuredTrips.forEach((trip, index) => {
+      measuredTrips.forEach((_, index) => {
         if (used + rowHeights[index] > capacity && nextPages.at(-1)!.length) { nextPages.push([]); used = 0; }
-        nextPages.at(-1)!.push(trip);
+        nextPages.at(-1)!.push(index);
         used += rowHeights[index];
       });
-      setResult({ key: inputKey, pages: nextPages });
+      if (used > finalCapacity && nextPages.at(-1)!.length > 1) {
+        const lastPage = nextPages.pop()!;
+        let bestSplit = 1;
+        let bestDifference = Infinity;
+        for (let split = 1; split < lastPage.length; split++) {
+          const firstHeight = lastPage.slice(0, split).reduce((sum, index) => sum + rowHeights[index], 0);
+          const secondHeight = used - firstHeight;
+          if (firstHeight <= capacity && secondHeight <= finalCapacity && Math.abs(firstHeight - secondHeight) < bestDifference) {
+            bestSplit = split;
+            bestDifference = Math.abs(firstHeight - secondHeight);
+          }
+        }
+        nextPages.push(lastPage.slice(0, bestSplit), lastPage.slice(bestSplit));
+      }
+      setResult({ key: inputKey, pages: nextPages.map((indices) => indices.map((index) => measuredTrips[index])) });
     }
     frame = requestAnimationFrame(paginate);
     void document.fonts.ready.then(() => { if (!cancelled) frame = requestAnimationFrame(paginate); });

@@ -451,8 +451,8 @@ p { text-wrap: pretty; }
 .trip-sticky-header-row { display: grid; background: #f8fafc; color: #64748b; font-size: 14px; font-weight: 700; }
 .trip-sticky-header-cell { min-width: 0; padding: 11px 10px; border-bottom: 1px solid #dbe3ee; line-height: 1.35; white-space: nowrap; }
 .trip-sticky-header-cell:first-child { padding-left: 16px; }
-.print-table th, .print-table td { padding: 5px 3px; }
-@media print { .print-table th, .print-table td { padding: 5px 3px; } }
+.print-table th, .print-table td { padding: 4px 3px; }
+@media print { .print-table th, .print-table td { padding: 4px 3px; } }
 
 .print-pages { width: min(297mm, 100%); margin: 0 auto; --print-scale: 1; }
 .print-pages[data-ready="false"] { opacity: 0; }
