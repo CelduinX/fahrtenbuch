@@ -40,6 +40,7 @@ export type RemarkSettingsDto = {
 
 export type TripDto = {
   readonly sequenceNumber: number;
+  numberingStart: number | null;
   accompanyingStaff: string;
   remark: string;
   id: number;

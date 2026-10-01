@@ -120,6 +120,7 @@ export function restoreBackup(id: string) {
     const hasChecked = tripColumnNames.has("is_checked");
     const hasTripReimbursement = tripColumnNames.has("reimbursed_km_snapshot");
     const hasTripReimbursementRate = tripColumnNames.has("reimbursement_rate_cents_snapshot");
+    const hasNumberingStart = tripColumnNames.has("numbering_start");
     const backupTables = new Set((backupColumns.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>).map((table) => table.name));
     const hasAppSettings = backupTables.has("app_settings")
       && (backupColumns.pragma("table_info(app_settings)") as Array<{ name: string }>).some((column) => column.name === "reimbursement_rate_cents");
@@ -156,8 +157,8 @@ export function restoreBackup(id: string) {
           SELECT id, place_a, place_b, ${routeColumnNames.has("place_a_full_name") ? "place_a_full_name" : "''"}, ${routeColumnNames.has("place_b_full_name") ? "place_b_full_name" : "''"}, pair_key, distance_km, ${hasRouteReimbursement ? "reimbursed_km" : "distance_km"}, ${hasDuration ? "duration_minutes" : "0"}, archived_at, created_at, updated_at
           FROM restore_db.route_pairs;
 
-          INSERT INTO trips (id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, reimbursed_km_snapshot, reimbursement_rate_cents_snapshot, odometer_start, is_checked, created_at, updated_at, ${textColumns.join(", ")})
-          SELECT id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, ${hasTripReimbursement ? "reimbursed_km_snapshot" : "distance_km_snapshot"}, ${hasTripReimbursementRate ? "reimbursement_rate_cents_snapshot" : "40"}, odometer_start, ${hasChecked ? "is_checked" : "CASE WHEN substr(date, 6, 2) NOT IN ('06', '07') THEN 1 ELSE 0 END"}, created_at, updated_at, ${textColumns.map((name) => tripColumnNames.has(name) ? name : "''").join(", ")}
+          INSERT INTO trips (id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, reimbursed_km_snapshot, reimbursement_rate_cents_snapshot, odometer_start, numbering_start, is_checked, created_at, updated_at, ${textColumns.join(", ")})
+          SELECT id, date, start_time, end_time, route_pair_id, direction, origin_snapshot, destination_snapshot, distance_km_snapshot, ${hasTripReimbursement ? "reimbursed_km_snapshot" : "distance_km_snapshot"}, ${hasTripReimbursementRate ? "reimbursement_rate_cents_snapshot" : "40"}, odometer_start, ${hasNumberingStart ? "numbering_start" : "NULL"}, ${hasChecked ? "is_checked" : "CASE WHEN substr(date, 6, 2) NOT IN ('06', '07') THEN 1 ELSE 0 END"}, created_at, updated_at, ${textColumns.map((name) => tripColumnNames.has(name) ? name : "''").join(", ")}
           FROM restore_db.trips;
         `);
         if (hasRemarkTemplates) {

@@ -22,7 +22,7 @@ describe("SQLite-Sicherungen", () => {
     await updatePrintColumnSettings(["date", "distanceKm"]);
     await updateReimbursementSettings(55);
     const originalRoute = await createRoutePair({ placeAFullName: "Zentrale Hamburg", placeBFullName: "Kundenstandort Berlin", placeA: "Büro", placeB: "Kunde", distanceKm: 22, reimbursedKm: 17, durationMinutes: 25 });
-    await createTrip({ date: "2026-07-10", startTime: "08:00", endTime: "09:00", odometerStart: 2000, routePairId: originalRoute.id, direction: "A_TO_B" });
+    const originalTrip = await createTrip({ date: "2026-07-10", startTime: "08:00", endTime: "09:00", odometerStart: 2000, routePairId: originalRoute.id, direction: "A_TO_B", numberingStart: 325 });
     const backup = await createBackup("manual");
     await updateVehicleSettings("CO-CD 456");
 
@@ -40,6 +40,9 @@ describe("SQLite-Sicherungen", () => {
     expect(result.trips).toBe(1);
     expect(await getActiveRoutePairs()).toEqual([expect.objectContaining({ placeA: "Büro", placeB: "Kunde", distanceKm: 22, reimbursedKm: 17 })]);
     expect((await getTripsForMonth("2026-07")).trips).toEqual([expect.objectContaining({
+      id: originalTrip.id,
+      sequenceNumber: 325,
+      numberingStart: 325,
       originFullName: "Zentrale Hamburg",
       destinationFullName: "Kundenstandort Berlin",
       reimbursedKm: 17,
@@ -80,6 +83,8 @@ describe("SQLite-Sicherungen", () => {
     expect(await getVehicleSettings()).toEqual({ licensePlate: "" });
     expect(await getActiveRoutePairs()).toEqual([expect.objectContaining({ distanceKm: 11, reimbursedKm: 11, unreimbursedKm: 0 })]);
     expect((await getTripsForMonth("2025-01")).trips).toEqual([expect.objectContaining({
+      numberingStart: null,
+      sequenceNumber: 1,
       originFullName: "",
       destinationFullName: "",
       accompanyingStaff: "",

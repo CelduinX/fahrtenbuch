@@ -93,6 +93,7 @@ export const trips = sqliteTable("trips", {
   reimbursedKmSnapshot: integer("reimbursed_km_snapshot").notNull().default(0),
   reimbursementRateCentsSnapshot: integer("reimbursement_rate_cents_snapshot").notNull().default(40),
   odometerStart: integer("odometer_start").notNull(),
+  numberingStart: integer("numbering_start"),
   isChecked: integer("is_checked", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

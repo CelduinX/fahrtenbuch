@@ -79,7 +79,7 @@ describe("Fahrten-CSV", () => {
     const csv = serializeTripCsv(rows);
 
     expect(csv.startsWith("\uFEFFlfd. Nr.;Datum;Beginn;Ende;Reiseweg;")).toBe(true);
-    expect(parseTripCsv(csv)).toEqual(rows.map((row) => ({ ...row, originFullName: "", destinationFullName: "", accompanyingStaff: "", remark: "", distanceKm: 18, reimbursedKm: 18, unreimbursedKm: 0, reimbursementRateCents: 40, potentialReimbursementCents: 720 })));
+    expect(parseTripCsv(csv)).toEqual(rows.map((row) => ({ ...row, numberingStart: null, originFullName: "", destinationFullName: "", accompanyingStaff: "", remark: "", distanceKm: 18, reimbursedKm: 18, unreimbursedKm: 0, reimbursementRateCents: 40, potentialReimbursementCents: 720 })));
 
   });
 

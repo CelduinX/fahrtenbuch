@@ -95,6 +95,12 @@ function addTripCheckedColumn() {
   state.sqlite.prepare("UPDATE trips SET is_checked = 1 WHERE substr(date, 6, 2) NOT IN ('06', '07')").run();
 }
 
+function addTripNumberingStartColumn() {
+  const columns = state.sqlite.pragma("table_info(trips)") as Array<{ name: string }>;
+  if (columns.some((column) => column.name === "numbering_start")) return;
+  state.sqlite.exec("ALTER TABLE trips ADD COLUMN numbering_start INTEGER CHECK(numbering_start IS NULL OR numbering_start BETWEEN 1 AND 1000000000)");
+}
+
 function addReimbursementColumns() {
   const routeColumns = state.sqlite.pragma("table_info(route_pairs)") as Array<{ name: string }>;
   if (!routeColumns.some((column) => column.name === "reimbursed_km")) {
@@ -173,6 +179,7 @@ export function ensureDatabaseReady() {
   }
   allowUnlinkedHistoricalTrips();
   addTripCheckedColumn();
+  addTripNumberingStartColumn();
   addReimbursementColumns();
   const tripTextColumns = state.sqlite.pragma("table_info(trips)") as Array<{ name: string }>;
   for (const name of ["accompanying_staff", "remark", "origin_full_name_snapshot", "destination_full_name_snapshot"]) {

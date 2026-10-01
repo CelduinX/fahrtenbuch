@@ -85,6 +85,7 @@ export const remarkSettingsSchema = z.object({
 }).refine((value) => value.defaultTemplateIndex === null || value.defaultTemplateIndex < value.templates.length, "Ungültige Standardvorlage.");
 
 const tripBaseSchema = z.object({
+  numberingStart: z.number().int().min(1, "Die Startnummer muss mindestens 1 sein.").max(1000000000, "Die Startnummer ist zu groß.").nullable().optional(),
   accompanyingStaff: z.string().trim().max(2000).optional(),
   remark: z.string().trim().max(2000).optional(),
   date: z.string().regex(datePattern, "Ungültiges Datum."),

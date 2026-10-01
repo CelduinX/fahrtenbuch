@@ -272,6 +272,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
   const [selectedRoute, setSelectedRoute] = useState<RouteOptionDto | null>(null);
   const [routeChanged, setRouteChanged] = useState(false);
   const [odometerStart, setOdometerStart] = useState(String(trip?.odometerStart ?? suggestedOdometerStart ?? ""));
+  const [numberingStart, setNumberingStart] = useState(trip?.numberingStart == null ? "" : String(trip.numberingStart));
   const odometerTouchedRef = useRef(Boolean(trip));
   const lastEditedTimeRef = useRef<TimeAnchor>("start");
   const [error, setError] = useState("");
@@ -390,6 +391,7 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
       startTime,
       endTime,
       odometerStart: Number(odometerStart),
+      numberingStart: numberingStart === "" ? null : Number(numberingStart),
     };
     if (!trip || routeChanged) {
       payload.routePairId = selectedRoute!.routePairId;
@@ -467,6 +469,12 @@ export function TripModal({ trip, defaultDate, suggestedOdometerStart, routeOpti
               <label className="label" htmlFor="trip-odo-end">KM Ende</label>
               <input className="field font-bold text-[#2563eb]" id="trip-odo-end" readOnly value={odometerEnd === null ? "–" : odometerEnd.toLocaleString("de-DE")} />
             </div>
+          </div>
+
+          <div>
+            <label className="label" htmlFor="trip-numbering-start">Startnummer (optional)</label>
+            <input className="field sm:max-w-52" id="trip-numbering-start" type="number" min="1" max="1000000000" step="1" value={numberingStart} onChange={(event) => setNumberingStart(event.target.value)} placeholder={trip ? `Aktuelle Nr. ${trip.sequenceNumber}` : "Automatisch"} />
+            <p className="mt-2 text-xs text-[#64748b]">Ab dieser Fahrt beginnt die laufende Nummerierung mit dem eingetragenen Wert. Leer lassen für automatische Fortsetzung.</p>
           </div>
 
           {error ? <p role="alert" className="status-enter rounded-xl border border-[#f1d2cf] bg-[#fff4f3] px-4 py-3 text-sm font-medium text-[#a33c36]">{error}</p> : null}

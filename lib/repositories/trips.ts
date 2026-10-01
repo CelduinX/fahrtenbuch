@@ -11,7 +11,21 @@ import { getActiveRoutePair } from "./routes";
 import { getReimbursementSettings } from "./settings";
 import { getRemarkSettings } from "./remarks";
 
-export function tripToDto(row: typeof trips.$inferSelect): TripDto {
+export function tripSequenceNumbers(): Map<number, number> {
+  ensureDatabaseReady();
+  const ordered = sqlite.prepare("SELECT id, numbering_start AS numberingStart FROM trips ORDER BY date, start_time, id")
+    .all() as Array<{ id: number; numberingStart: number | null }>;
+  const numbers = new Map<number, number>();
+  let next = 1;
+  for (const row of ordered) {
+    if (row.numberingStart !== null) next = row.numberingStart;
+    numbers.set(row.id, next);
+    next += 1;
+  }
+  return numbers;
+}
+
+export function tripToDto(row: typeof trips.$inferSelect, numbers?: Map<number, number>): TripDto {
   const pair = row.routePairId !== null && row.direction !== null
     ? sqlite.prepare("SELECT place_a AS placeA, place_b AS placeB, place_a_full_name AS placeAFullName, place_b_full_name AS placeBFullName FROM route_pairs WHERE id = ?").get(row.routePairId) as { placeA: string; placeB: string; placeAFullName: string; placeBFullName: string } | undefined
     : undefined;
@@ -24,10 +38,8 @@ export function tripToDto(row: typeof trips.$inferSelect): TripDto {
     destinationFullName: row.routePairId === null ? row.destinationFullNameSnapshot : matches(row.destinationSnapshot, destination) ? (row.direction === "A_TO_B" ? pair!.placeBFullName : pair!.placeAFullName) : "",
     accompanyingStaff: row.accompanyingStaff,
     remark: row.remark,
-    sequenceNumber: (sqlite.prepare(`SELECT COUNT(*) + 1 AS number FROM trips
-      WHERE date < ? OR (date = ? AND start_time < ?)
-      OR (date = ? AND start_time = ? AND id < ?)`)
-      .get(row.date, row.date, row.startTime, row.date, row.startTime, row.id) as { number: number }).number,
+    sequenceNumber: (numbers ?? tripSequenceNumbers()).get(row.id)!,
+    numberingStart: row.numberingStart,
     id: row.id,
     date: row.date,
     startTime: row.startTime,
@@ -57,7 +69,8 @@ export async function getTripsForMonth(month: string): Promise<MonthDataDto> {
   const rows = await db.select().from(trips)
     .where(and(gte(trips.date, start), lt(trips.date, endExclusive)))
     .orderBy(asc(trips.date), asc(trips.startTime), asc(trips.id));
-  const dto = rows.filter((row) => row.date >= start && row.date < endExclusive).map(tripToDto);
+  const numbers = tripSequenceNumbers();
+  const dto = rows.map((row) => tripToDto(row, numbers));
   return {
     trips: dto,
     totalKm: dto.reduce((sum, trip) => sum + trip.distanceKm, 0),
@@ -85,6 +98,7 @@ export async function getTrip(id: number) {
 }
 
 type TripInput = {
+  numberingStart?: number | null;
   accompanyingStaff?: string;
   remark?: string;
   date: string;
@@ -110,7 +124,8 @@ export async function getTripsForDateRange(from: string, to: string) {
   const rows = await db.select().from(trips)
     .where(and(gte(trips.date, from), lte(trips.date, to)))
     .orderBy(asc(trips.date), asc(trips.startTime), asc(trips.id));
-  return rows.map(tripToDto);
+  const numbers = tripSequenceNumbers();
+  return rows.map((row) => tripToDto(row, numbers));
 }
 
 export function getTripDateRange(): TripDateRangeDto {
@@ -125,7 +140,8 @@ export function getTripDateRange(): TripDateRangeDto {
 export async function importTripsFromCsv(rows: TripCsvRow[]): Promise<TripCsvImportResultDto> {
   ensureDatabaseReady();
   const existingRows = await db.select().from(trips);
-  const existingDtos = existingRows.map(tripToDto);
+  const numbers = tripSequenceNumbers();
+  const existingDtos = existingRows.map((row) => tripToDto(row, numbers));
   const existingLegacyKeys = new Set(existingDtos.map((row) => tripCsvDuplicateKey(row)));
   const existingExtendedKeys = new Set(existingDtos.map((row) => tripCsvDuplicateKey(row, true)));
   const pendingKeys = new Set<string>();
@@ -153,9 +169,9 @@ export async function importTripsFromCsv(rows: TripCsvRow[]): Promise<TripCsvImp
       date, start_time, end_time, route_pair_id, direction,
       origin_snapshot, destination_snapshot, distance_km_snapshot,
       reimbursed_km_snapshot, reimbursement_rate_cents_snapshot,
-      odometer_start, is_checked, created_at, updated_at,
+      odometer_start, numbering_start, is_checked, created_at, updated_at,
       origin_full_name_snapshot, destination_full_name_snapshot, accompanying_staff, remark
-    ) VALUES (?, ?, ?, NULL, NULL, ?, '', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, NULL, NULL, ?, '', ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
   `);
   sqlite.transaction(() => {
     for (const row of pending) {
@@ -169,6 +185,7 @@ export async function importTripsFromCsv(rows: TripCsvRow[]): Promise<TripCsvImp
         row.reimbursedKm ?? distanceKm,
         row.reimbursementRateCents ?? 40,
         row.odometerStart,
+        row.numberingStart ?? null,
         now,
         now,
         row.originFullName ?? "",
@@ -198,6 +215,7 @@ export async function createTrip(input: TripInput) {
   const now = new Date().toISOString();
   const [created] = await db.insert(trips).values({
     ...input,
+    numberingStart: input.numberingStart ?? null,
     accompanyingStaff: input.accompanyingStaff?.trim() ?? "",
     remark: input.remark?.trim() ?? defaultRemark,
     ...routeSnapshot(pair, input.direction),
@@ -234,6 +252,7 @@ export async function updateTrip(id: number, input: Omit<TripInput, "routePairId
     startTime: input.startTime,
     endTime: input.endTime,
     odometerStart: input.odometerStart,
+    numberingStart: input.numberingStart === undefined ? existing.numberingStart : input.numberingStart,
     ...routeValues,
     updatedAt: new Date().toISOString(),
   }).where(eq(trips.id, id)).returning();

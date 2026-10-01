@@ -3,7 +3,7 @@ import { currentDate } from "../dates";
 import { db, ensureDatabaseReady, sqlite } from "../db";
 import { trips } from "../db/schema";
 import type { DashboardDataDto, DashboardSummaryDto } from "../types";
-import { tripToDto } from "./trips";
+import { tripSequenceNumbers, tripToDto } from "./trips";
 
 type DateRange = { start: string; endExclusive: string } | null;
 
@@ -101,7 +101,8 @@ async function recentTripsFor(range: DateRange) {
   const rows = range
     ? await db.select().from(trips).where(and(gte(trips.date, range.start), lt(trips.date, range.endExclusive))).orderBy(desc(trips.date), desc(trips.startTime), desc(trips.id)).limit(5)
     : await db.select().from(trips).orderBy(desc(trips.date), desc(trips.startTime), desc(trips.id)).limit(5);
-  return rows.map(tripToDto);
+  const numbers = tripSequenceNumbers();
+  return rows.map((row) => tripToDto(row, numbers));
 }
 
 export async function getDashboardData(requestedPeriod?: string): Promise<DashboardDataDto> {

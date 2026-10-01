@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS trips (
   reimbursed_km_snapshot INTEGER NOT NULL DEFAULT 0 CHECK(reimbursed_km_snapshot >= 0),
   reimbursement_rate_cents_snapshot INTEGER NOT NULL DEFAULT 40 CHECK(reimbursement_rate_cents_snapshot >= 0),
   odometer_start INTEGER NOT NULL CHECK(odometer_start >= 0),
+  numbering_start INTEGER CHECK(numbering_start IS NULL OR numbering_start BETWEEN 1 AND 1000000000),
   is_checked INTEGER NOT NULL DEFAULT 0 CHECK(is_checked IN (0, 1)),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

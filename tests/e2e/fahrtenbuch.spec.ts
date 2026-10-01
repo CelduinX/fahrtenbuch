@@ -183,8 +183,15 @@ test("Login, Reiseweg und Fahrt lassen sich vollständig verwalten", async ({ pa
 
   await page.getByRole("cell", { name: "1.018" }).click();
   await page.getByRole("textbox", { name: "Ende", exact: true }).fill("09:30");
+  await expect(page.getByLabel("Startnummer (optional)")).toHaveValue("");
+  await page.getByLabel("Startnummer (optional)").fill("7");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByRole("cell", { name: "09:30", exact: true })).toBeVisible();
+  await expect(page.locator('tbody td[data-column="sequenceNumber"] .trip-cell-value')).toHaveText("7");
+
+  await page.getByRole("cell", { name: "1.018" }).click();
+  await expect(page.getByLabel("Startnummer (optional)")).toHaveValue("7");
+  await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
 
   await page.goto(`/print?month=${currentMonth()}`);
   await expect(page.getByRole("columnheader", { name: "KM abrechenbar", exact: true })).toBeVisible();

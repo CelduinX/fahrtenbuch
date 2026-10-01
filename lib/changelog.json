@@ -1,5 +1,30 @@
 [
   {
+    "version": "1.0.13",
+    "date": "2026-10-01",
+    "title": "Optionale Startnummer für Fahrten ergänzen",
+    "fileCount": 16,
+    "files": [
+      "components/TripModal.tsx",
+      "lib/backups.ts",
+      "lib/db/index.ts",
+      "lib/db/migrations/0000_initial.sql",
+      "lib/db/schema.ts",
+      "lib/repositories/dashboard.ts",
+      "lib/repositories/trips.ts",
+      "lib/trip-csv.ts",
+      "lib/types.ts",
+      "lib/validation.ts",
+      "tests/backups.integration.test.ts",
+      "tests/e2e/fahrtenbuch.spec.ts",
+      "tests/numbering-migration.integration.test.ts",
+      "tests/trip-columns.integration.test.ts",
+      "tests/trip-csv.integration.test.ts",
+      "tests/unit.test.ts"
+    ],
+    "fingerprint": "d9111c884f40cd85"
+  },
+  {
     "version": "1.0.12",
     "date": "2026-10-01",
     "title": "Next.js-Sicherheitsupdate für den Docker-Build",

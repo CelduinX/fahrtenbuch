@@ -54,6 +54,7 @@ describe("CSV-Import und -Export", () => {
     const parsed = parseTripCsv(serializeTripCsv(exported));
 
     expect(parsed).toEqual([{
+      numberingStart: null,
       originFullName: "", destinationFullName: "", accompanyingStaff: "", remark: "",
       distanceKm: 18, reimbursedKm: 14, unreimbursedKm: 4, reimbursementRateCents: 40, potentialReimbursementCents: 560,
       date: "2026-07-28",
@@ -89,5 +90,19 @@ describe("CSV-Import und -Export", () => {
 
     const duplicateResult = await importTripsFromCsv([importedRow]);
     expect(duplicateResult).toEqual(expect.objectContaining({ imported: 0, skipped: 1, backup: null }));
+  });
+
+  it("erhält die Startnummer beim CSV-Rundlauf und liest das bisherige vollständige Format", async () => {
+    const row = { ...importedRow, date: "2024-05-15", numberingStart: 17 };
+    const csv = serializeTripCsv([row]);
+    expect(parseTripCsv(csv)[0].numberingStart).toBe(17);
+    const imported = await importTripsFromCsv(parseTripCsv(csv));
+    if (imported.backup) createdBackups.push(imported.backup.id);
+    const restored = (await getTripsForMonth("2024-05")).trips.find((trip) => trip.date === row.date);
+    expect(restored).toMatchObject({ numberingStart: 17, sequenceNumber: 17 });
+    expect(parseTripCsv(serializeTripCsv([restored!]))[0].numberingStart).toBe(17);
+    const oldCsv = csv.trimEnd().split("\r\n").map((line) => line.slice(0, line.lastIndexOf(";"))).join("\r\n");
+    expect(parseTripCsv(oldCsv)[0].numberingStart).toBeUndefined();
+    expect(() => parseTripCsv(csv.replace(/;17\r\n$/, ";0\r\n"))).toThrow(/Startnummer/);
   });
 });
